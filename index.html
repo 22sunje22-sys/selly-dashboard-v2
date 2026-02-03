@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selly Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
+
+        /* Login */
+        .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); }
+        .login-box { background: #111; padding: 40px; border-radius: 16px; border: 1px solid #333; text-align: center; min-width: 320px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .login-box h1 { color: #00d4ff; margin-bottom: 5px; font-size: 28px; }
+        .login-box .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .login-box input { width: 100%; padding: 14px 16px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; margin-bottom: 15px; outline: none; }
+        .login-box input:focus { border-color: #00d4ff; }
+        .login-box button { width: 100%; padding: 14px; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .login-box button:hover { opacity: 0.9; }
+        .login-error { color: #ff6666; margin-top: 10px; display: none; }
+
+        /* Role Selection */
+        .role-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); }
+        .role-box { background: #111; padding: 40px; border-radius: 16px; border: 1px solid #333; text-align: center; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .role-box h2 { color: #00d4ff; margin-bottom: 10px; }
+        .role-box p { color: #666; margin-bottom: 25px; }
+        .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+        .role-btn { padding: 15px 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .role-btn:hover { border-color: #00d4ff; background: #222; }
+        .role-btn.selected { border-color: #00d4ff; background: rgba(0,212,255,0.1); }
+        .role-countries { font-size: 10px; color: #666; margin-top: 5px; }
+
+        /* Dashboard */
+        .dashboard { display: none; padding: 20px; }
+        .dashboard.active { display: block; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .tab { padding: 10px 20px; background: transparent; border: none; color: #666; cursor: pointer; font-size: 14px; border-radius: 8px 8px 0 0; }
+        .tab:hover { color: #fff; }
+        .tab.active { background: #1a1a1a; color: #00d4ff; }
+        .tab-junk { color: #ff6666; }
+        .tab-junk.active { color: #ff6666; background: rgba(255,100,100,0.1); }
+        .junk-count { background: #ff4444; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; }
+        .tab-achievements { color: #ffd700; }
+        .tab-achievements.active { color: #ffd700; background: rgba(255,215,0,0.1); }
+        .achievements-count { background: #ffd700; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; font-weight: bold; }
+
+        /* Achievements */
+        .achievements-section { padding: 20px 0; }
+        .achievements-header { text-align: center; margin-bottom: 30px; }
+        .achievements-header h3 { color: #ffd700; font-size: 24px; margin-bottom: 10px; }
+        .achievements-header p { color: #888; }
+        .achievements-progress { background: #111; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 30px; text-align: center; }
+        .achievements-progress .big-number { font-size: 48px; color: #ffd700; font-weight: bold; }
+        .achievements-progress .label { color: #888; font-size: 14px; }
+        .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .achievement-card { background: #111; border: 1px solid #333; border-radius: 12px; padding: 20px; transition: all 0.3s; position: relative; overflow: hidden; }
+        .achievement-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .achievement-card.unlocked { border-color: rgba(255,215,0,0.5); background: linear-gradient(135deg, #111 0%, rgba(255,215,0,0.05) 100%); }
+        .achievement-card.locked { opacity: 0.5; }
+        .achievement-icon { font-size: 40px; margin-bottom: 10px; }
+        .achievement-name { color: #fff; font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        .achievement-desc { color: #888; font-size: 13px; margin-bottom: 10px; }
+        .achievement-date { color: #ffd700; font-size: 11px; }
+        .achievement-locked-label { color: #555; font-size: 11px; font-style: italic; }
+        .achievement-badge { position: absolute; top: 10px; right: 10px; background: #ffd700; color: #000; font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+
+        /* Achievement notification */
+        .achievement-toast { position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); border: 2px solid #ffd700; border-radius: 16px; padding: 20px 25px; z-index: 2000; display: none; animation: slideIn 0.5s ease; box-shadow: 0 10px 40px rgba(255,215,0,0.3); max-width: 350px; }
+        .achievement-toast.show { display: flex; align-items: center; gap: 15px; }
+        .achievement-toast .toast-icon { font-size: 40px; }
+        .achievement-toast .toast-content { flex: 1; }
+        .achievement-toast .toast-title { color: #ffd700; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+        .achievement-toast .toast-name { color: #fff; font-size: 18px; font-weight: bold; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        h1 { color: #00d4ff; margin-bottom: 5px; font-size: 24px; }
+        .user-info { color: #666; font-size: 12px; }
+        .user-info span { color: #00d4ff; }
+
+        .status { padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+        .loading { background: #111; color: #00d4ff; }
+        .success { background: rgba(0,212,255,0.1); border-color: #00d4ff; }
+        .error { background: rgba(255,0,0,0.1); border-color: #ff4444; color: #ff6666; }
+
+        /* Filters */
+        .filters { background: #111; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .filters-title { color: #00d4ff; font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; }
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .filter-group label { display: block; color: #888; font-size: 11px; margin-bottom: 5px; text-transform: uppercase; }
+        .filter-group input, .filter-group select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; }
+        .filter-group input:focus, .filter-group select:focus { border-color: #00d4ff; }
+
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #111; border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,212,255,0.1); }
+        .stat-label { color: #888; font-size: 11px; text-transform: uppercase; }
+        .stat-value { color: #00d4ff; font-size: 28px; font-weight: bold; margin-top: 5px; }
+
+        .btn-group { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,212,255,0.3); }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,212,255,0.4); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: #333; color: #fff; box-shadow: none; }
+        .btn-logout { background: transparent; border: 1px solid #ff4444; color: #ff4444; box-shadow: none; }
+        .btn-danger { background: #ff4444; color: #fff; box-shadow: none; }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; color: #666; border-bottom: 1px solid #333; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; background: #0a0a0a; }
+        td { padding: 12px; border-bottom: 1px solid #222; color: #999; font-size: 13px; }
+        td:first-child { color: #00d4ff; }
+        a { color: #00d4ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        tr:hover { background: rgba(0,212,255,0.03); }
+        .table-container { max-height: 500px; overflow-y: auto; border: 1px solid #333; border-radius: 12px; }
+        .results-info { color: #666; text-align: center; padding: 10px; font-size: 13px; }
+
+        /* Status badges - clickable */
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.2s; display: inline-block; }
+        .status-badge:hover { opacity: 0.8; transform: scale(1.05); }
+        .status-business { background: rgba(0,212,255,0.2); color: #00d4ff; }
+        .status-notplatinum { background: rgba(255,165,0,0.2); color: #ffa500; }
+        .status-attractions { background: rgba(0,255,136,0.2); color: #00ff88; }
+        .status-exclusive { background: rgba(147,51,234,0.2); color: #9333ea; }
+        .status-check { background: rgba(255,200,0,0.2); color: #ffc800; }
+        .status-other { background: rgba(100,100,100,0.2); color: #888; }
+        .status-empty { background: #1a1a1a; color: #555; border: 1px dashed #333; }
+
+        /* Dropdown for status/assign */
+        .dropdown-wrapper { position: relative; display: inline-block; }
+        .dropdown-menu { position: absolute; top: 100%; left: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; min-width: 200px; max-height: 300px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .dropdown-menu.active { display: block; }
+        .dropdown-item { padding: 10px 15px; cursor: pointer; font-size: 12px; color: #ccc; border-bottom: 1px solid #222; }
+        .dropdown-item:hover { background: #222; color: #00d4ff; }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item.selected { background: rgba(0,212,255,0.1); color: #00d4ff; }
+
+        /* Assign badge */
+        .assign-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; background: #1a1a1a; border: 1px solid #333; cursor: pointer; display: inline-block; color: #888; }
+        .assign-badge:hover { border-color: #00d4ff; color: #00d4ff; }
+        .assign-badge.assigned { color: #00d4ff; background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+
+        /* Transferred badge */
+        .transferred-badge { font-size: 9px; color: #ffa500; background: rgba(255,165,0,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 5px; display: inline-block; }
+
+        /* Domain badge */
+        .domain-badge { font-size: 10px; color: #666; background: #1a1a1a; padding: 3px 6px; border-radius: 4px; }
+
+        /* Date small */
+        .date-small { font-size: 10px; color: #555; }
+
+        /* Comments */
+        .comment-cell { max-width: 200px; }
+        .comment-text { cursor: pointer; padding: 4px 8px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; display: inline-block; min-width: 80px; font-size: 12px; }
+        .comment-text:hover { border-color: #00d4ff; }
+        .comment-text.empty { color: #555; font-style: italic; }
+        .comment-text.has-comment { color: #00d4ff; }
+        .commented-by { font-size: 10px; color: #666; display: block; margin-top: 2px; }
+
+        /* Junk button */
+        .junk-btn { background: transparent; border: none; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; opacity: 0.5; transition: all 0.2s; }
+        .junk-btn:hover { opacity: 1; background: rgba(255,100,100,0.2); }
+        .action-cell { display: flex; align-items: center; gap: 5px; }
+
+        /* Country Groups */
+        .country-group { margin-bottom: 30px; }
+        .country-header { background: linear-gradient(135deg, #1a1a1a 0%, #111 100%); padding: 15px 20px; border-radius: 12px 12px 0 0; border: 1px solid #333; border-bottom: none; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
+        .country-header:hover { background: #222; border-color: #00d4ff; }
+        .country-header h3 { color: #00d4ff; font-size: 16px; margin: 0; }
+        .country-header .country-stats { color: #888; font-size: 13px; }
+        .country-header .country-stats span { color: #00d4ff; margin-left: 15px; }
+        .country-table-wrap { border: 1px solid #333; border-radius: 0 0 12px 12px; overflow: hidden; overflow-x: auto; }
+        .country-table-wrap.collapsed { display: none; }
+
+        /* Junk section */
+        .junk-section { background: rgba(255,68,68,0.05); border: 1px solid rgba(255,68,68,0.2); border-radius: 12px; padding: 20px; }
+        .junk-section h3 { color: #ff6666; margin-bottom: 15px; }
+        .junk-table { width: 100%; }
+        .junk-table th { background: rgba(255,68,68,0.1); color: #ff6666; }
+        .junk-table tr:hover { background: rgba(255,68,68,0.05); }
+        .restore-btn { background: #333; color: #00d4ff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .restore-btn:hover { background: #444; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #111; border: 1px solid #333; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; }
+        .modal h3 { color: #00d4ff; margin-bottom: 10px; }
+        .modal-event-title { color: #888; font-size: 14px; margin-bottom: 20px; }
+        .modal textarea { width: 100%; min-height: 120px; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; resize: vertical; outline: none; }
+        .modal textarea:focus { border-color: #00d4ff; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .modal-buttons button { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-save { background: #00d4ff; color: #000; }
+        .btn-cancel { background: #333; color: #fff; }
+
+        /* Week Tab */
+        .week-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .week-card { background: #111; border: 1px solid #333; border-radius: 12px; padding: 20px; }
+        .week-card h4 { color: #00d4ff; margin-bottom: 15px; font-size: 14px; }
+        .progress-bar { height: 20px; background: #1a1a1a; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; transition: width 0.3s; }
+        .progress-commented { background: linear-gradient(90deg, #00d4ff, #0099cc); }
+        .week-numbers { display: flex; justify-content: space-between; font-size: 12px; color: #888; }
+
+        /* Flatpickr */
+        .flatpickr-calendar { background: #111 !important; border: 1px solid #333 !important; }
+        .flatpickr-months .flatpickr-month { background: #111 !important; color: #00d4ff !important; }
+        .flatpickr-current-month .flatpickr-monthDropdown-months { background: #111 !important; color: #00d4ff !important; }
+        .flatpickr-current-month input.cur-year { color: #00d4ff !important; }
+        .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { color: #00d4ff !important; fill: #00d4ff !important; }
+        .flatpickr-weekdays { background: #111 !important; }
+        span.flatpickr-weekday { color: #666 !important; background: #111 !important; }
+        .flatpickr-days { background: #111 !important; }
+        .flatpickr-day { color: #fff !important; border-radius: 4px !important; }
+        .flatpickr-day:hover { background: #333 !important; border-color: #333 !important; }
+        .flatpickr-day.selected { background: #00d4ff !important; border-color: #00d4ff !important; color: #000 !important; }
+        .flatpickr-day.today { border-color: #00d4ff !important; }
+        .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: #444 !important; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard { padding: 12px; }
+            .header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            h1 { font-size: 20px; }
+            .tabs { overflow-x: auto; }
+            .tab { white-space: nowrap; padding: 8px 16px; font-size: 13px; }
+            .filters { padding: 15px; }
+            .filters-grid { grid-template-columns: 1fr; gap: 10px; }
+            .role-grid { grid-template-columns: repeat(2, 1fr); }
+            .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card { padding: 15px; }
+            .stat-value { font-size: 22px; }
+            table { min-width: 1000px; font-size: 12px; }
+            th, td { padding: 10px 8px; }
+            .modal { padding: 20px; margin: 10px; }
+        }
+
+        @media (min-width: 1200px) {
+            .dashboard { max-width: 1600px; margin: 0 auto; padding: 30px 40px; }
+            .stats { grid-template-columns: repeat(5, 1fr); }
+            .filters-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" class="login-screen">
+    <div class="login-box">
+        <h1>📊 Selly</h1>
+        <p class="subtitle">Platinumlist Sales Dashboard</p>
+        <input type="password" id="password-input" placeholder="Password" onkeypress="if(event.key==='Enter')login()">
+        <button onclick="login()">Login</button>
+        <p class="login-error" id="login-error">Invalid password</p>
+    </div>
+</div>
+
+<!-- Role Selection -->
+<div id="role-screen" class="role-screen" style="display:none;">
+    <div class="role-box">
+        <h2>👤 Select Your Role</h2>
+        <p>Choose your name to see your assigned countries</p>
+        <div class="role-grid" id="role-grid"></div>
+        <button class="btn" style="margin-top:20px;width:100%" onclick="confirmRole()">Continue</button>
+    </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="dashboard">
+    <div class="header">
+        <div>
+            <h1>📊 Selly Dashboard</h1>
+            <p class="user-info">Logged in as <span id="current-user"></span> • <span id="user-countries"></span></p>
+        </div>
+        <div>
+            <button class="btn btn-secondary" onclick="changeRole()">Change Role</button>
+            <button class="btn btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('data')">📋 Data</button>
+        <button class="tab" onclick="switchTab('week')">📈 Week Stats</button>
+        <button class="tab tab-junk" onclick="switchTab('junk')">🗑️ Junk <span class="junk-count" id="junk-count">0</span></button>
+        <button class="tab tab-achievements" onclick="switchTab('achievements')">🏆 Achievements <span class="achievements-count" id="achievements-count">0</span></button>
+    </div>
+
+    <!-- Data Tab -->
+    <div id="tab-data">
+        <div id="status" class="status loading">⏳ Loading...</div>
+
+        <div class="filters">
+            <div class="filters-title" onclick="toggleFilters()">
+                <span>🔍 Filters</span>
+                <span id="filters-toggle">▼</span>
+            </div>
+            <div class="filters-grid" id="filters-grid">
+                <div class="filter-group">
+                    <label>Search</label>
+                    <input type="text" id="filter-search" placeholder="Event title..." oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label>Country</label>
+                    <select id="filter-country" onchange="applyFilters()">
+                        <option value="">All countries</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>City</label>
+                    <select id="filter-city" onchange="applyFilters()">
+                        <option value="">All cities</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="filter-category" onchange="applyFilters()">
+                        <option value="">All categories</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="filter-status" onchange="applyFilters()">
+                        <option value="">All statuses</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Assigned to</label>
+                    <select id="filter-assigned" onchange="applyFilters()">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Comments</label>
+                    <select id="filter-comments" onchange="applyFilters()">
+                        <option value="">All</option>
+                        <option value="with">With comments</option>
+                        <option value="without">Without comments</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Date from</label>
+                    <input type="date" id="filter-date-from" onchange="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label>Date to</label>
+                    <input type="date" id="filter-date-to" onchange="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label>Domain</label>
+                    <select id="filter-domain" onchange="applyFilters()">
+                        <option value="">All domains</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" onclick="fetchData()">🔄 Refresh</button>
+            <button class="btn btn-secondary" onclick="clearFilters()">✕ Clear filters</button>
+            <button class="btn btn-secondary" onclick="filterLast10DaysNoComments()">🔥 Last 10 days (no comments)</button>
+        </div>
+
+        <div id="stats" class="stats"></div>
+        <div id="table-container"></div>
+    </div>
+
+    <!-- Week Tab -->
+    <div id="tab-week" style="display:none;">
+        <div id="week-content"></div>
+    </div>
+
+    <!-- Junk Tab -->
+    <div id="tab-junk" style="display:none;">
+        <div class="junk-section">
+            <h3>🗑️ Junk Events (Not Relevant)</h3>
+            <p style="color:#888;margin-bottom:20px;font-size:13px;">Events marked as not relevant by the team</p>
+            <div id="junk-table-container"></div>
+        </div>
+    </div>
+
+    <!-- Achievements Tab -->
+    <div id="tab-achievements" style="display:none;">
+        <div class="achievements-section">
+            <div class="achievements-header">
+                <h3>🏆 Your Achievements</h3>
+                <p>Track your progress and unlock rewards</p>
+            </div>
+            <div class="achievements-progress">
+                <div class="big-number" id="achievements-unlocked">0/20</div>
+                <div class="label">Achievements Unlocked</div>
+            </div>
+            <div class="achievements-grid" id="achievements-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Toast -->
+<div class="achievement-toast" id="achievement-toast">
+    <div class="toast-icon" id="toast-icon">🏆</div>
+    <div class="toast-content">
+        <div class="toast-title">Achievement Unlocked!</div>
+        <div class="toast-name" id="toast-name"></div>
+    </div>
+</div>
+
+<!-- Comment Modal -->
+<div id="comment-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h3>💬 Comment</h3>
+        <p class="modal-event-title" id="modal-event-title"></p>
+        <textarea id="comment-input" placeholder="Enter comment..."></textarea>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-save" id="btn-save" onclick="saveComment()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Config
+const SUPABASE_URL = 'https://kwftlkfvtglnugxsyjci.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZnRsa2Z2dGdsbnVneHN5amNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2NDAxODUsImV4cCI6MjA2MzIxNjE4NX0.9Cn1xahmF8q6pbbWQHNyQSc9fZkVvJaqTzMRZCtmb9E';
+const PASSWORD = 'selly30';
+
+// GCC Countries
+const GCC = ['UAE', 'Bahrain', 'BAHRAIN', 'Qatar', 'QATAR', 'KSA', 'Saudi Arabia', 'Oman', 'Kuwait'];
+
+// Status options for dropdown
+const STATUS_OPTIONS = [
+    'Business events',
+    'Not on platinumlist',
+    'Attractions',
+    'Exclusive on Platinumlist',
+    'Listing Only',
+    'Live Nation',
+    'we have it on platinumlist as non exclusive',
+    'Kuwait, no inventory for now',
+    'Qatar team pls check',
+    'Bahrain team pls check',
+    'Oman team pls check',
+    'Morocco team pls check',
+    'Lebanon team pls check',
+    'something strange pls check'
+];
+
+// Team members for assignment
+const TEAM_MEMBERS = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Ahmed', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka'];
+
+// Roles and their countries
+const ROLES = {
+    'Cosmin': { countries: null, label: 'All Countries', statusFilter: null },
+    'Paul': { countries: ['UAE'], label: 'UAE', statusFilter: null },
+    'Osama': { countries: GCC, label: 'All GCC', statusFilter: null },
+    'Alexandra': { countries: ['UAE'], label: 'UAE', statusFilter: null },
+    'Ahmed': { countries: ['Bahrain', 'BAHRAIN', 'Qatar', 'QATAR', 'Lebanon'], label: 'Bahrain, Qatar, Lebanon', statusFilter: null },
+    'Khalid': { countries: ['Qatar', 'QATAR'], label: 'Qatar', statusFilter: null },
+    'MoayadNQ': { countries: ['KSA', 'Saudi Arabia'], label: 'KSA', statusFilter: null },
+    'Abdulrahman': { countries: ['KSA', 'Saudi Arabia'], label: 'KSA', statusFilter: null },
+    'Lina': { countries: ['Oman'], label: 'Oman', statusFilter: null },
+    'Inass': { countries: ['Morocco'], label: 'Morocco', statusFilter: null },
+    'Eman': { countries: ['UAE'], label: 'UAE', statusFilter: null },
+    'Roshanka': { countries: ['UAE'], label: 'UAE (Business events only)', statusFilter: 'Business events' }
+};
+
+let allData = [], filteredData = [], junkData = [];
+let currentRole = null;
+let currentEditId = null;
+
+// Cookie helpers
+const SESSION_MINUTES = 30;
+function setCookie(name, value, minutes) {
+    const expires = new Date(Date.now() + minutes * 60 * 1000).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+}
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+}
+function deleteCookie(name) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+function refreshSession() {
+    if (getCookie('selly_auth') === 'true') {
+        setCookie('selly_auth', 'true', SESSION_MINUTES);
+        const role = getCookie('selly_role');
+        if (role) setCookie('selly_role', role, SESSION_MINUTES);
+    }
+}
+
+// Auth
+function login() {
+    const input = document.getElementById('password-input');
+    if (input.value === PASSWORD) {
+        setCookie('selly_auth', 'true', SESSION_MINUTES);
+        showRoleSelection();
+    } else {
+        document.getElementById('login-error').style.display = 'block';
+        input.value = '';
+    }
+}
+
+function logout() {
+    deleteCookie('selly_auth');
+    deleteCookie('selly_role');
+    location.reload();
+}
+
+function showRoleSelection() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('role-screen').style.display = 'flex';
+    document.getElementById('dashboard').classList.remove('active');
+    renderRoleGrid();
+}
+
+function renderRoleGrid() {
+    const grid = document.getElementById('role-grid');
+    grid.innerHTML = Object.entries(ROLES).map(([name, info]) => `
+        <div class="role-btn" data-role="${name}" onclick="selectRole('${name}')">
+            ${name}
+            <div class="role-countries">${info.label}</div>
+        </div>
+    `).join('');
+}
+
+function selectRole(role) {
+    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('selected'));
+    document.querySelector(`[data-role="${role}"]`).classList.add('selected');
+    currentRole = role;
+}
+
+function confirmRole() {
+    if (!currentRole) { alert('Please select a role'); return; }
+    setCookie('selly_role', currentRole, SESSION_MINUTES);
+    showDashboard();
+}
+
+function changeRole() {
+    deleteCookie('selly_role');
+    currentRole = null;
+    document.getElementById('dashboard').classList.remove('active');
+    showRoleSelection();
+}
+
+function showDashboard() {
+    currentRole = getCookie('selly_role');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('role-screen').style.display = 'none';
+    document.getElementById('dashboard').classList.add('active');
+    document.getElementById('current-user').textContent = currentRole;
+    document.getElementById('user-countries').textContent = ROLES[currentRole].label;
+    refreshSession();
+    fetchData();
+    fetchJunkData();
+    fetchAchievements();
+    fetchActivityStats();
+}
+
+function showLoginScreen() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('role-screen').style.display = 'none';
+    document.getElementById('dashboard').classList.remove('active');
+}
+
+function checkAuth() {
+    if (getCookie('selly_auth') === 'true') {
+        if (getCookie('selly_role')) showDashboard();
+        else showRoleSelection();
+    } else showLoginScreen();
+}
+
+document.addEventListener('click', refreshSession);
+document.addEventListener('keypress', refreshSession);
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown-wrapper')) {
+        document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
+    }
+});
+
+// Tabs
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById('tab-data').style.display = tab === 'data' ? 'block' : 'none';
+    document.getElementById('tab-week').style.display = tab === 'week' ? 'block' : 'none';
+    document.getElementById('tab-junk').style.display = tab === 'junk' ? 'block' : 'none';
+    document.getElementById('tab-achievements').style.display = tab === 'achievements' ? 'block' : 'none';
+    if (tab === 'week') renderWeekStats();
+    if (tab === 'junk') renderJunkTable();
+    if (tab === 'achievements') renderAchievements();
+}
+
+// Data
+async function fetchData() {
+    const statusEl = document.getElementById('status');
+    statusEl.className = 'status loading';
+    statusEl.innerHTML = '⏳ Loading from Supabase...';
+
+    try {
+        let allResults = [];
+        let offset = 0;
+        const limit = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+            statusEl.innerHTML = `⏳ Loading... ${allResults.length} events`;
+            const response = await fetch(
+                `${SUPABASE_URL}/rest/v1/selly_clean?select=*&order=date.desc&offset=${offset}&limit=${limit}`,
+                { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+            );
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const batch = await response.json();
+            allResults = allResults.concat(batch);
+            hasMore = batch.length === limit;
+            offset += limit;
+        }
+
+        let data = allResults;
+        const roleInfo = ROLES[currentRole];
+
+        // Filter by role countries
+        if (roleInfo.countries) {
+            data = data.filter(e => roleInfo.countries.includes(e.country));
+        }
+
+        // Filter by status for Roshanka (only Business events)
+        if (roleInfo.statusFilter) {
+            data = data.filter(e => e.status === roleInfo.statusFilter);
+        }
+
+        // Also show events assigned to current user
+        const assignedToMe = allResults.filter(e => e.responsible && e.responsible.includes(currentRole));
+        assignedToMe.forEach(e => {
+            if (!data.find(d => d.id === e.id)) {
+                data.push(e);
+            }
+        });
+
+        allData = data;
+        statusEl.className = 'status success';
+        statusEl.innerHTML = `✅ Loaded ${allData.length} events`;
+
+        populateFilters();
+        applyFilters();
+
+    } catch (error) {
+        statusEl.className = 'status error';
+        statusEl.innerHTML = `❌ Error: ${error.message}`;
+    }
+}
+
+// Fetch junk data
+async function fetchJunkData() {
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/junk_selly?select=*&order=junked_at.desc`,
+            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        junkData = await response.json();
+        document.getElementById('junk-count').textContent = junkData.length;
+    } catch (error) {
+        console.error('Error fetching junk data:', error);
+    }
+}
+
+function populateFilters() {
+    const countries = [...new Set(allData.map(e => normalizeCountry(e.country)).filter(c => c !== 'Unknown'))].sort();
+    document.getElementById('filter-country').innerHTML = '<option value="">All countries (' + countries.length + ')</option>' +
+        countries.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const cities = [...new Set(allData.map(e => e.city).filter(Boolean))].sort();
+    document.getElementById('filter-city').innerHTML = '<option value="">All cities (' + cities.length + ')</option>' +
+        cities.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const categories = [...new Set(allData.map(e => e.category).filter(Boolean))].sort();
+    document.getElementById('filter-category').innerHTML = '<option value="">All categories (' + categories.length + ')</option>' +
+        categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const statuses = [...new Set(allData.map(e => e.status).filter(Boolean))].sort();
+    document.getElementById('filter-status').innerHTML = '<option value="">All statuses (' + statuses.length + ')</option>' +
+        statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    const domains = [...new Set(allData.map(e => e.domain).filter(d => d && !d.includes('#N/A')))].sort();
+    document.getElementById('filter-domain').innerHTML = '<option value="">All domains (' + domains.length + ')</option>' +
+        domains.map(d => `<option value="${d}">${d}</option>`).join('');
+
+    document.getElementById('filter-assigned').innerHTML = '<option value="">All</option>' +
+        '<option value="unassigned">Unassigned</option>' +
+        '<option value="assigned_to_me">Assigned to me</option>' +
+        TEAM_MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function applyFilters() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    const country = document.getElementById('filter-country').value;
+    const city = document.getElementById('filter-city').value;
+    const category = document.getElementById('filter-category').value;
+    const status = document.getElementById('filter-status').value;
+    const comments = document.getElementById('filter-comments').value;
+    const dateFrom = document.getElementById('filter-date-from').value;
+    const dateTo = document.getElementById('filter-date-to').value;
+    const domain = document.getElementById('filter-domain').value;
+    const assigned = document.getElementById('filter-assigned').value;
+
+    filteredData = allData.filter(e => {
+        if (search && !(e.title || '').toLowerCase().includes(search)) return false;
+        if (country && normalizeCountry(e.country) !== country) return false;
+        if (city && e.city !== city) return false;
+        if (category && e.category !== category) return false;
+        if (status && e.status !== status) return false;
+        if (comments === 'with' && (!e.comment || !e.comment.trim())) return false;
+        if (comments === 'without' && e.comment && e.comment.trim()) return false;
+        if (dateFrom && e.date && e.date < dateFrom) return false;
+        if (dateTo && e.date && e.date > dateTo) return false;
+        if (domain && e.domain !== domain) return false;
+        if (assigned === 'unassigned' && e.responsible && e.responsible.trim()) return false;
+        if (assigned === 'assigned_to_me' && (!e.responsible || !e.responsible.includes(currentRole))) return false;
+        if (assigned && assigned !== 'unassigned' && assigned !== 'assigned_to_me' && (!e.responsible || !e.responsible.includes(assigned))) return false;
+        return true;
+    });
+
+    renderStats();
+    renderTable();
+}
+
+function clearFilters() {
+    ['filter-search', 'filter-country', 'filter-city', 'filter-category', 'filter-status', 'filter-comments', 'filter-date-from', 'filter-date-to', 'filter-domain', 'filter-assigned']
+        .forEach(id => document.getElementById(id).value = '');
+    applyFilters();
+}
+
+function filterLast10DaysNoComments() {
+    clearFilters();
+    const today = new Date();
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(today.getDate() - 10);
+    document.getElementById('filter-date-from').value = tenDaysAgo.toISOString().substring(0, 10);
+    document.getElementById('filter-date-to').value = today.toISOString().substring(0, 10);
+    document.getElementById('filter-comments').value = 'without';
+    applyFilters();
+}
+
+function toggleFilters() {
+    const grid = document.getElementById('filters-grid');
+    const toggle = document.getElementById('filters-toggle');
+    if (grid.style.display === 'none') {
+        grid.style.display = 'grid';
+        toggle.textContent = '▼';
+    } else {
+        grid.style.display = 'none';
+        toggle.textContent = '▶';
+    }
+}
+
+function normalizeCountry(country) {
+    if (!country) return 'Unknown';
+    const upper = country.toUpperCase();
+    const mapping = { 'UAE': 'UAE', 'KSA': 'KSA', 'USA': 'USA', 'UK': 'UK' };
+    if (mapping[upper]) return mapping[upper];
+    return country.charAt(0).toUpperCase() + country.slice(1).toLowerCase();
+}
+
+function renderStats() {
+    const total = filteredData.length;
+    const withComments = filteredData.filter(e => e.comment && e.comment.trim()).length;
+    const countries = new Set(filteredData.map(e => normalizeCountry(e.country)).filter(c => c !== 'Unknown')).size;
+    const cities = new Set(filteredData.map(e => e.city).filter(Boolean)).size;
+
+    document.getElementById('stats').innerHTML = `
+        <div class="stat-card"><div class="stat-label">Events</div><div class="stat-value">${total}</div></div>
+        <div class="stat-card"><div class="stat-label">Commented</div><div class="stat-value">${withComments}</div></div>
+        <div class="stat-card"><div class="stat-label">% Commented</div><div class="stat-value">${total > 0 ? Math.round(withComments / total * 100) : 0}%</div></div>
+        <div class="stat-card"><div class="stat-label">Countries</div><div class="stat-value">${countries}</div></div>
+        <div class="stat-card"><div class="stat-label">Cities</div><div class="stat-value">${cities}</div></div>
+    `;
+}
+
+function escapeHtml(s) { return s ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''; }
+function escapeAttr(s) { return s ? s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : ''; }
+
+function getStatusClass(status) {
+    if (!status) return 'status-empty';
+    const s = status.toLowerCase();
+    if (s.includes('business')) return 'status-business';
+    if (s.includes('not on platinum')) return 'status-notplatinum';
+    if (s.includes('attraction')) return 'status-attractions';
+    if (s.includes('exclusive')) return 'status-exclusive';
+    if (s.includes('check') || s.includes('team')) return 'status-check';
+    return 'status-other';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    return dateStr;
+}
+
+function formatCreatedAt(timestamp) {
+    if (!timestamp) return '—';
+    const d = new Date(timestamp);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function renderTable() {
+    const el = document.getElementById('table-container');
+    if (filteredData.length === 0) {
+        el.innerHTML = '<p class="results-info">No events found</p>';
+        return;
+    }
+
+    const byCountry = {};
+    filteredData.forEach(e => {
+        const country = normalizeCountry(e.country);
+        if (!byCountry[country]) byCountry[country] = [];
+        byCountry[country].push(e);
+    });
+
+    const sortedCountries = Object.keys(byCountry).sort();
+
+    const renderRow = (e) => {
+        const hasComment = e.comment && e.comment.trim();
+        const statusClass = getStatusClass(e.status);
+        const isAssigned = e.responsible && e.responsible.trim();
+        const transferredFrom = e.transferred_from;
+
+        return `<tr>
+            <td>${e.url ? `<a href="${e.url}" target="_blank">${escapeHtml(e.title)}</a>` : escapeHtml(e.title) || '—'}</td>
+            <td>${escapeHtml(e.city) || '—'}</td>
+            <td>${escapeHtml(e.category) || '—'}</td>
+            <td>
+                <div>${formatDate(e.date)}</div>
+                <div class="date-small">Added: ${formatCreatedAt(e.created_at)}</div>
+            </td>
+            <td><span class="domain-badge">${e.domain && !e.domain.includes('#N/A') ? escapeHtml(e.domain) : '—'}</span></td>
+            <td>
+                <div class="dropdown-wrapper">
+                    <span class="status-badge ${statusClass}" onclick="toggleStatusDropdown(event, '${e.id}')" data-id="${e.id}">
+                        ${e.status ? escapeHtml(e.status) : '+ set status'}
+                    </span>
+                    <div class="dropdown-menu" id="status-dropdown-${e.id}">
+                        ${STATUS_OPTIONS.map(s => `<div class="dropdown-item ${e.status === s ? 'selected' : ''}" onclick="updateStatus('${e.id}', '${escapeAttr(s)}')">${escapeHtml(s)}</div>`).join('')}
+                        <div class="dropdown-item" onclick="updateStatus('${e.id}', '')" style="color:#ff6666;">✕ Clear status</div>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="dropdown-wrapper">
+                    <span class="assign-badge ${isAssigned ? 'assigned' : ''}" onclick="toggleAssignDropdown(event, '${e.id}')" data-id="${e.id}">
+                        ${isAssigned ? escapeHtml(e.responsible) : '+ assign'}
+                    </span>
+                    ${transferredFrom ? `<span class="transferred-badge">← ${escapeHtml(transferredFrom)}</span>` : ''}
+                    <div class="dropdown-menu" id="assign-dropdown-${e.id}">
+                        ${TEAM_MEMBERS.map(m => `<div class="dropdown-item ${e.responsible === m ? 'selected' : ''}" onclick="updateAssign('${e.id}', '${m}')">${m}</div>`).join('')}
+                        <div class="dropdown-item" onclick="updateAssign('${e.id}', '')" style="color:#ff6666;">✕ Unassign</div>
+                    </div>
+                </div>
+            </td>
+            <td class="action-cell">
+                <span class="comment-text ${hasComment ? 'has-comment' : 'empty'}"
+                    data-id="${e.id}" data-title="${escapeAttr(e.title)}" data-comment="${escapeAttr(e.comment)}">
+                    ${hasComment ? escapeHtml(e.comment).substring(0, 25) + (e.comment.length > 25 ? '...' : '') : '+ add'}
+                </span>
+                <button class="junk-btn" onclick="moveToJunk('${e.id}')" title="Mark as not relevant">🗑️</button>
+                ${e.commented_by ? `<span class="commented-by">by ${escapeHtml(e.commented_by)}</span>` : ''}
+            </td>
+        </tr>`;
+    };
+
+    let html = '';
+    sortedCountries.forEach(country => {
+        const events = byCountry[country];
+        const commented = events.filter(e => e.comment && e.comment.trim()).length;
+        const pct = Math.round(commented / events.length * 100);
+
+        html += `
+            <div class="country-group">
+                <div class="country-header" onclick="toggleCountry(this)">
+                    <h3>🌍 ${escapeHtml(country)}</h3>
+                    <div class="country-stats">
+                        Events: <span>${events.length}</span>
+                        Commented: <span>${commented} (${pct}%)</span>
+                    </div>
+                </div>
+                <div class="country-table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Title</th>
+                            <th>City</th>
+                            <th>Category</th>
+                            <th>Date / Added</th>
+                            <th>Domain</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                            <th>Comment / Actions</th>
+                        </tr></thead>
+                        <tbody>${events.map(renderRow).join('')}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `<p class="results-info">Showing ${filteredData.length} events in ${sortedCountries.length} countries</p>`;
+    el.innerHTML = html;
+}
+
+function toggleCountry(header) {
+    header.nextElementSibling.classList.toggle('collapsed');
+}
+
+// Dropdown handlers
+function toggleStatusDropdown(event, id) {
+    event.stopPropagation();
+    document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
+    document.getElementById(`status-dropdown-${id}`).classList.toggle('active');
+}
+
+function toggleAssignDropdown(event, id) {
+    event.stopPropagation();
+    document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
+    document.getElementById(`assign-dropdown-${id}`).classList.toggle('active');
+}
+
+// Update status
+async function updateStatus(id, newStatus) {
+    document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
+
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus || null })
+            }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const idx = allData.findIndex(e => e.id === id);
+        if (idx !== -1) allData[idx].status = newStatus;
+        applyFilters();
+
+        // Log activity for achievements
+        logActivity('status_change', id);
+
+        document.getElementById('status').innerHTML = '✅ Status updated';
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Update assignment
+async function updateAssign(id, newAssign) {
+    document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
+
+    const event = allData.find(e => e.id === id);
+    const oldAssign = event ? event.responsible : null;
+
+    try {
+        const updateData = {
+            responsible: newAssign || null,
+            transferred_from: (newAssign && oldAssign && oldAssign !== newAssign) ? currentRole : null
+        };
+
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const idx = allData.findIndex(e => e.id === id);
+        if (idx !== -1) {
+            allData[idx].responsible = newAssign;
+            allData[idx].transferred_from = updateData.transferred_from;
+        }
+        applyFilters();
+
+        // Log activity for achievements
+        if (newAssign) logActivity('assign', id);
+
+        document.getElementById('status').innerHTML = `✅ Assigned to ${newAssign || 'nobody'}`;
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Move to junk
+async function moveToJunk(id) {
+    if (!confirm('Mark this event as not relevant?')) return;
+
+    const event = allData.find(e => e.id === id);
+    if (!event) return;
+
+    try {
+        // Add to junk table
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/junk_selly`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    original_id: event.id,
+                    url: event.url,
+                    title: event.title,
+                    status: event.status,
+                    country: event.country,
+                    city: event.city,
+                    junked_by: currentRole
+                })
+            }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        // Remove from main table (soft delete - just remove from view)
+        allData = allData.filter(e => e.id !== id);
+        applyFilters();
+        fetchJunkData();
+
+        // Log activity for achievements
+        logActivity('junk', id);
+
+        document.getElementById('status').innerHTML = '✅ Moved to junk';
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Render junk table
+function renderJunkTable() {
+    const el = document.getElementById('junk-table-container');
+
+    if (junkData.length === 0) {
+        el.innerHTML = '<p style="color:#666;text-align:center;">No junk events yet</p>';
+        return;
+    }
+
+    el.innerHTML = `
+        <table class="junk-table">
+            <thead><tr>
+                <th>Title</th>
+                <th>Country</th>
+                <th>City</th>
+                <th>Status</th>
+                <th>Junked by</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr></thead>
+            <tbody>
+                ${junkData.map(j => `
+                    <tr>
+                        <td>${j.url ? `<a href="${j.url}" target="_blank">${escapeHtml(j.title)}</a>` : escapeHtml(j.title) || '—'}</td>
+                        <td>${escapeHtml(j.country) || '—'}</td>
+                        <td>${escapeHtml(j.city) || '—'}</td>
+                        <td>${escapeHtml(j.status) || '—'}</td>
+                        <td>${escapeHtml(j.junked_by) || '—'}</td>
+                        <td>${formatCreatedAt(j.junked_at)}</td>
+                        <td><button class="restore-btn" onclick="restoreFromJunk('${j.id}', '${j.original_id}')">↩️ Restore</button></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Restore from junk
+async function restoreFromJunk(junkId, originalId) {
+    if (!confirm('Restore this event?')) return;
+
+    try {
+        // Delete from junk table
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/junk_selly?id=eq.${junkId}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        await fetchJunkData();
+        await fetchData();
+        renderJunkTable();
+
+        document.getElementById('status').innerHTML = '✅ Event restored';
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Week Stats
+function renderWeekStats() {
+    const weekData = {};
+    allData.forEach(e => {
+        if (!e.date) return;
+        const date = new Date(e.date);
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay() + 1);
+        const weekKey = weekStart.toISOString().substring(0, 10);
+        if (!weekData[weekKey]) weekData[weekKey] = { total: 0, commented: 0 };
+        weekData[weekKey].total++;
+        if (e.comment && e.comment.trim()) weekData[weekKey].commented++;
+    });
+
+    const sortedWeeks = Object.entries(weekData).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 12);
+
+    document.getElementById('week-content').innerHTML = `
+        <h3 style="color:#00d4ff;margin-bottom:20px;">📈 Comment Progress by Week</h3>
+        <div class="week-stats">
+            ${sortedWeeks.map(([week, data]) => {
+                const pct = data.total > 0 ? Math.round(data.commented / data.total * 100) : 0;
+                return `
+                    <div class="week-card">
+                        <h4>Week of ${week}</h4>
+                        <div class="progress-bar">
+                            <div class="progress-fill progress-commented" style="width:${pct}%"></div>
+                        </div>
+                        <div class="week-numbers">
+                            <span>${data.commented} commented</span>
+                            <span>${pct}%</span>
+                            <span>${data.total} total</span>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+// Comment Modal
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('comment-text')) {
+        currentEditId = e.target.dataset.id;
+        document.getElementById('modal-event-title').textContent = e.target.dataset.title || 'Event';
+        document.getElementById('comment-input').value = e.target.dataset.comment || '';
+        document.getElementById('comment-modal').classList.add('active');
+        document.getElementById('comment-input').focus();
+    }
+});
+
+function closeModal() {
+    document.getElementById('comment-modal').classList.remove('active');
+    currentEditId = null;
+}
+
+async function saveComment() {
+    if (!currentEditId) return;
+    const comment = document.getElementById('comment-input').value;
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${currentEditId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ comment: comment, commented_by: currentRole })
+            }
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const idx = allData.findIndex(e => e.id === currentEditId);
+        if (idx !== -1) {
+            allData[idx].comment = comment;
+            allData[idx].commented_by = currentRole;
+        }
+        closeModal();
+        applyFilters();
+
+        // Log activity for achievements
+        logActivity('comment', currentEditId);
+        checkSpecialAchievements();
+
+        document.getElementById('status').innerHTML = '✅ Comment saved';
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+    }
+}
+
+// ========== ACHIEVEMENTS SYSTEM ==========
+const ACHIEVEMENTS = [
+    // Comments milestones
+    { id: 'first_comment', icon: '💬', name: 'First Words', desc: 'Leave your first comment', category: 'comments' },
+    { id: 'comments_5', icon: '📝', name: 'Getting Started', desc: 'Leave 5 comments', category: 'comments' },
+    { id: 'comments_10', icon: '✍️', name: 'Active Reviewer', desc: 'Leave 10 comments', category: 'comments' },
+    { id: 'comments_25', icon: '📋', name: 'Feedback Pro', desc: 'Leave 25 comments', category: 'comments' },
+    { id: 'comments_50', icon: '📚', name: 'Comment Master', desc: 'Leave 50 comments', category: 'comments' },
+    { id: 'comments_100', icon: '🏅', name: 'Century Club', desc: 'Leave 100 comments', category: 'comments' },
+
+    // Status changes
+    { id: 'first_status', icon: '🏷️', name: 'Organizer', desc: 'Set your first status', category: 'status' },
+    { id: 'status_10', icon: '📊', name: 'Status Tracker', desc: 'Update 10 statuses', category: 'status' },
+    { id: 'status_50', icon: '🎯', name: 'Classification Expert', desc: 'Update 50 statuses', category: 'status' },
+
+    // Assignments
+    { id: 'first_assign', icon: '👥', name: 'Team Player', desc: 'Assign your first event', category: 'assign' },
+    { id: 'assign_10', icon: '🤝', name: 'Coordinator', desc: 'Assign 10 events', category: 'assign' },
+    { id: 'assign_25', icon: '👔', name: 'Manager', desc: 'Assign 25 events', category: 'assign' },
+
+    // Junk management
+    { id: 'first_junk', icon: '🗑️', name: 'Clean Keeper', desc: 'Mark first event as junk', category: 'junk' },
+    { id: 'junk_10', icon: '🧹', name: 'Data Cleaner', desc: 'Clean up 10 irrelevant events', category: 'junk' },
+    { id: 'junk_25', icon: '✨', name: 'Quality Guardian', desc: 'Clean up 25 irrelevant events', category: 'junk' },
+
+    // Special achievements
+    { id: 'daily_5', icon: '⚡', name: 'Power Hour', desc: 'Comment on 5 events in one day', category: 'special' },
+    { id: 'all_countries', icon: '🌍', name: 'Global Reach', desc: 'Comment on events from 5+ countries', category: 'special' },
+    { id: 'early_bird', icon: '🌅', name: 'Early Bird', desc: 'Be active before 9 AM', category: 'special' },
+    { id: 'night_owl', icon: '🦉', name: 'Night Owl', desc: 'Be active after 9 PM', category: 'special' },
+    { id: 'weekend_warrior', icon: '🎮', name: 'Weekend Warrior', desc: 'Work on a weekend', category: 'special' }
+];
+
+let userAchievements = [];
+let activityStats = { comments: 0, status_changes: 0, assigns: 0, junks: 0 };
+
+// Fetch user achievements
+async function fetchAchievements() {
+    if (!currentRole) return;
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/achievements?user_name=eq.${encodeURIComponent(currentRole)}&select=*`,
+            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (response.ok) {
+            userAchievements = await response.json();
+            document.getElementById('achievements-count').textContent = userAchievements.length;
+        }
+    } catch (e) { console.error('Error fetching achievements:', e); }
+}
+
+// Fetch activity stats
+async function fetchActivityStats() {
+    if (!currentRole) return;
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/activity_log?user_name=eq.${encodeURIComponent(currentRole)}&select=action_type`,
+            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (response.ok) {
+            const activities = await response.json();
+            activityStats = { comments: 0, status_changes: 0, assigns: 0, junks: 0 };
+            activities.forEach(a => {
+                if (a.action_type === 'comment') activityStats.comments++;
+                else if (a.action_type === 'status_change') activityStats.status_changes++;
+                else if (a.action_type === 'assign') activityStats.assigns++;
+                else if (a.action_type === 'junk') activityStats.junks++;
+            });
+        }
+    } catch (e) { console.error('Error fetching activity stats:', e); }
+}
+
+// Log activity
+async function logActivity(actionType, eventId) {
+    if (!currentRole) return;
+    try {
+        await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ user_name: currentRole, action_type: actionType, event_id: eventId })
+        });
+
+        // Update local stats
+        if (actionType === 'comment') activityStats.comments++;
+        else if (actionType === 'status_change') activityStats.status_changes++;
+        else if (actionType === 'assign') activityStats.assigns++;
+        else if (actionType === 'junk') activityStats.junks++;
+
+        // Check for new achievements
+        checkAchievements(actionType);
+    } catch (e) { console.error('Error logging activity:', e); }
+}
+
+// Check and award achievements
+async function checkAchievements(actionType) {
+    const achievementsToCheck = [];
+
+    // Comment achievements
+    if (actionType === 'comment') {
+        if (activityStats.comments === 1) achievementsToCheck.push('first_comment');
+        if (activityStats.comments === 5) achievementsToCheck.push('comments_5');
+        if (activityStats.comments === 10) achievementsToCheck.push('comments_10');
+        if (activityStats.comments === 25) achievementsToCheck.push('comments_25');
+        if (activityStats.comments === 50) achievementsToCheck.push('comments_50');
+        if (activityStats.comments === 100) achievementsToCheck.push('comments_100');
+    }
+
+    // Status achievements
+    if (actionType === 'status_change') {
+        if (activityStats.status_changes === 1) achievementsToCheck.push('first_status');
+        if (activityStats.status_changes === 10) achievementsToCheck.push('status_10');
+        if (activityStats.status_changes === 50) achievementsToCheck.push('status_50');
+    }
+
+    // Assign achievements
+    if (actionType === 'assign') {
+        if (activityStats.assigns === 1) achievementsToCheck.push('first_assign');
+        if (activityStats.assigns === 10) achievementsToCheck.push('assign_10');
+        if (activityStats.assigns === 25) achievementsToCheck.push('assign_25');
+    }
+
+    // Junk achievements
+    if (actionType === 'junk') {
+        if (activityStats.junks === 1) achievementsToCheck.push('first_junk');
+        if (activityStats.junks === 10) achievementsToCheck.push('junk_10');
+        if (activityStats.junks === 25) achievementsToCheck.push('junk_25');
+    }
+
+    // Time-based achievements
+    const hour = new Date().getHours();
+    if (hour < 9) achievementsToCheck.push('early_bird');
+    if (hour >= 21) achievementsToCheck.push('night_owl');
+
+    const day = new Date().getDay();
+    if (day === 0 || day === 6) achievementsToCheck.push('weekend_warrior');
+
+    // Award achievements
+    for (const achId of achievementsToCheck) {
+        await awardAchievement(achId);
+    }
+}
+
+// Award achievement
+async function awardAchievement(achievementId) {
+    // Check if already has
+    if (userAchievements.find(a => a.achievement_id === achievementId)) return;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/achievements`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ user_name: currentRole, achievement_id: achievementId })
+        });
+
+        if (response.ok) {
+            const newAch = await response.json();
+            userAchievements.push(newAch[0]);
+            document.getElementById('achievements-count').textContent = userAchievements.length;
+
+            // Show toast
+            const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+            if (achievement) showAchievementToast(achievement);
+        }
+    } catch (e) {
+        // Might fail if duplicate, that's ok
+        console.log('Achievement might already exist:', achievementId);
+    }
+}
+
+// Show achievement toast
+function showAchievementToast(achievement) {
+    const toast = document.getElementById('achievement-toast');
+    document.getElementById('toast-icon').textContent = achievement.icon;
+    document.getElementById('toast-name').textContent = achievement.name;
+    toast.classList.add('show');
+
+    setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+// Render achievements tab
+function renderAchievements() {
+    const unlocked = userAchievements.length;
+    const total = ACHIEVEMENTS.length;
+    document.getElementById('achievements-unlocked').textContent = `${unlocked}/${total}`;
+
+    const grid = document.getElementById('achievements-grid');
+    grid.innerHTML = ACHIEVEMENTS.map(ach => {
+        const earned = userAchievements.find(a => a.achievement_id === ach.id);
+        const isUnlocked = !!earned;
+
+        return `
+            <div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'}">
+                ${isUnlocked ? '<div class="achievement-badge">UNLOCKED</div>' : ''}
+                <div class="achievement-icon">${ach.icon}</div>
+                <div class="achievement-name">${ach.name}</div>
+                <div class="achievement-desc">${ach.desc}</div>
+                ${isUnlocked
+                    ? `<div class="achievement-date">Earned: ${new Date(earned.earned_at).toLocaleDateString()}</div>`
+                    : '<div class="achievement-locked-label">🔒 Locked</div>'
+                }
+            </div>
+        `;
+    }).join('');
+}
+
+// Check special achievements (countries, daily activity)
+async function checkSpecialAchievements() {
+    // Check countries achievement
+    const myComments = allData.filter(e => e.commented_by === currentRole);
+    const countries = new Set(myComments.map(e => e.country).filter(Boolean));
+    if (countries.size >= 5) await awardAchievement('all_countries');
+
+    // Check daily 5 comments (simplified - just check if activity today >= 5)
+    try {
+        const today = new Date().toISOString().substring(0, 10);
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/activity_log?user_name=eq.${encodeURIComponent(currentRole)}&action_type=eq.comment&created_at=gte.${today}&select=id`,
+            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (response.ok) {
+            const todayComments = await response.json();
+            if (todayComments.length >= 5) await awardAchievement('daily_5');
+        }
+    } catch (e) { console.error('Error checking special achievements:', e); }
+}
+
+// Init
+checkAuth();
+
+// Flatpickr
+const fpConfig = { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd.m.Y', allowInput: true, onChange: applyFilters };
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+script.onload = () => {
+    flatpickr('#filter-date-from', fpConfig);
+    flatpickr('#filter-date-to', fpConfig);
+};
+document.head.appendChild(script);
+</script>
+</body>
+</html>
