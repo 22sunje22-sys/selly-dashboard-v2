@@ -433,10 +433,19 @@
 </div>
 
 <script>
-// Config
-const SUPABASE_URL = 'https://kwftlkfvtglnugxsyjci.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZnRsa2Z2dGdsbnVneHN5amNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2NDAxODUsImV4cCI6MjA2MzIxNjE4NX0.9Cn1xahmF8q6pbbWQHNyQSc9fZkVvJaqTzMRZCtmb9E';
+// Config - Supabase credentials are now stored in Vercel Environment Variables
+// and accessed via /api/supabase proxy
 const PASSWORD = 'selly30';
+
+// Helper function to call Supabase via proxy
+async function supabaseProxy(endpoint, { method = 'GET', params = '', data = null } = {}) {
+    const response = await fetch('/api/supabase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, method, params, data })
+    });
+    return response.json();
+}
 
 // Slack IDs mapping (notifications sent via /api/slack proxy)
 const SLACK_IDS = {
@@ -685,12 +694,10 @@ async function fetchData() {
 
         while (hasMore) {
             statusEl.innerHTML = `⏳ Loading... ${allResults.length} events`;
-            const response = await fetch(
-                `${SUPABASE_URL}/rest/v1/selly_clean?select=*&order=date.desc&offset=${offset}&limit=${limit}`,
-                { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-            );
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const batch = await response.json();
+            const batch = await supabaseProxy('selly_clean', {
+                params: `select=*&order=date.desc&offset=${offset}&limit=${limit}`
+            });
+            if (batch.error) throw new Error(batch.error);
             allResults = allResults.concat(batch);
             hasMore = batch.length === limit;
             offset += limit;
@@ -738,12 +745,11 @@ async function fetchData() {
 // Fetch junk data
 async function fetchJunkData() {
     try {
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/junk_selly?select=*&order=junked_at.desc`,
-            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        junkData = await response.json();
+        const result = await supabaseProxy('junk_selly', {
+            params: 'select=*&order=junked_at.desc'
+        });
+        if (result.error) throw new Error(result.error);
+        junkData = result;
         document.getElementById('junk-count').textContent = junkData.length;
     } catch (error) {
         console.error('Error fetching junk data:', error);
@@ -1032,20 +1038,13 @@ async function updateStatus(id, newStatus) {
     document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
 
     try {
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${id}`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: newStatus || null })
-            }
-        );
+        const result = await supabaseProxy('selly_clean', {
+            method: 'PATCH',
+            params: `id=eq.${id}`,
+            data: { status: newStatus || null }
+        });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (result.error) throw new Error(result.error);
 
         const idx = allData.findIndex(e => e.id === id);
         if (idx !== -1) allData[idx].status = newStatus;
@@ -1101,20 +1100,13 @@ async function updateAssign(id, newAssign) {
             transferred_from: (newAssign && oldAssign && oldAssign !== newAssign) ? currentRole : null
         };
 
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${id}`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(updateData)
-            }
-        );
+        const result = await supabaseProxy('selly_clean', {
+            method: 'PATCH',
+            params: `id=eq.${id}`,
+            data: updateData
+        });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (result.error) throw new Error(result.error);
 
         const idx = allData.findIndex(e => e.id === id);
         if (idx !== -1) {
@@ -1146,29 +1138,20 @@ async function moveToJunk(id) {
 
     try {
         // Add to junk table
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/junk_selly`,
-            {
-                method: 'POST',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({
-                    original_id: event.id,
-                    url: event.url,
-                    title: event.title,
-                    status: event.status,
-                    country: event.country,
-                    city: event.city,
-                    junked_by: currentRole
-                })
+        const result = await supabaseProxy('junk_selly', {
+            method: 'POST',
+            data: {
+                original_id: event.id,
+                url: event.url,
+                title: event.title,
+                status: event.status,
+                country: event.country,
+                city: event.city,
+                junked_by: currentRole
             }
-        );
+        });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (result.error) throw new Error(result.error);
 
         // Remove from main table (soft delete - just remove from view)
         allData = allData.filter(e => e.id !== id);
@@ -1227,18 +1210,12 @@ async function restoreFromJunk(junkId, originalId) {
 
     try {
         // Delete from junk table
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/junk_selly?id=eq.${junkId}`,
-            {
-                method: 'DELETE',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                }
-            }
-        );
+        const result = await supabaseProxy('junk_selly', {
+            method: 'DELETE',
+            params: `id=eq.${junkId}`
+        });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (result.error) throw new Error(result.error);
 
         await fetchJunkData();
         await fetchData();
@@ -1313,19 +1290,12 @@ async function saveComment() {
     btn.textContent = 'Saving...';
 
     try {
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/selly_clean?id=eq.${currentEditId}`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ comment: comment, commented_by: currentRole })
-            }
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await supabaseProxy('selly_clean', {
+            method: 'PATCH',
+            params: `id=eq.${currentEditId}`,
+            data: { comment: comment, commented_by: currentRole }
+        });
+        if (result.error) throw new Error(result.error);
 
         const idx = allData.findIndex(e => e.id === currentEditId);
         if (idx !== -1) {
@@ -1388,12 +1358,11 @@ let activityStats = { comments: 0, status_changes: 0, assigns: 0, junks: 0 };
 async function fetchAchievements() {
     if (!currentRole) return;
     try {
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/achievements?user_name=eq.${encodeURIComponent(currentRole)}&select=*`,
-            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-        );
-        if (response.ok) {
-            userAchievements = await response.json();
+        const result = await supabaseProxy('achievements', {
+            params: `user_name=eq.${encodeURIComponent(currentRole)}&select=*`
+        });
+        if (!result.error) {
+            userAchievements = result;
             document.getElementById('achievements-count').textContent = userAchievements.length;
         }
     } catch (e) { console.error('Error fetching achievements:', e); }
@@ -1403,12 +1372,10 @@ async function fetchAchievements() {
 async function fetchActivityStats() {
     if (!currentRole) return;
     try {
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/activity_log?user_name=eq.${encodeURIComponent(currentRole)}&select=action_type`,
-            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-        );
-        if (response.ok) {
-            const activities = await response.json();
+        const activities = await supabaseProxy('activity_log', {
+            params: `user_name=eq.${encodeURIComponent(currentRole)}&select=action_type`
+        });
+        if (!activities.error) {
             activityStats = { comments: 0, status_changes: 0, assigns: 0, junks: 0 };
             activities.forEach(a => {
                 if (a.action_type === 'comment') activityStats.comments++;
@@ -1424,15 +1391,9 @@ async function fetchActivityStats() {
 async function logActivity(actionType, eventId) {
     if (!currentRole) return;
     try {
-        await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        await supabaseProxy('activity_log', {
             method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ user_name: currentRole, action_type: actionType, event_id: eventId })
+            data: { user_name: currentRole, action_type: actionType, event_id: eventId }
         });
 
         // Update local stats
@@ -1501,19 +1462,12 @@ async function awardAchievement(achievementId) {
     if (userAchievements.find(a => a.achievement_id === achievementId)) return;
 
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/achievements`, {
+        const newAch = await supabaseProxy('achievements', {
             method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            },
-            body: JSON.stringify({ user_name: currentRole, achievement_id: achievementId })
+            data: { user_name: currentRole, achievement_id: achievementId }
         });
 
-        if (response.ok) {
-            const newAch = await response.json();
+        if (!newAch.error && newAch.length > 0) {
             userAchievements.push(newAch[0]);
             document.getElementById('achievements-count').textContent = userAchievements.length;
 
@@ -1573,13 +1527,11 @@ async function checkSpecialAchievements() {
     // Check daily 5 comments (simplified - just check if activity today >= 5)
     try {
         const today = new Date().toISOString().substring(0, 10);
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/activity_log?user_name=eq.${encodeURIComponent(currentRole)}&action_type=eq.comment&created_at=gte.${today}&select=id`,
-            { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-        );
-        if (response.ok) {
-            const todayComments = await response.json();
-            if (todayComments.length >= 5) await awardAchievement('daily_5');
+        const todayComments = await supabaseProxy('activity_log', {
+            params: `user_name=eq.${encodeURIComponent(currentRole)}&action_type=eq.comment&created_at=gte.${today}&select=id`
+        });
+        if (!todayComments.error && todayComments.length >= 5) {
+            await awardAchievement('daily_5');
         }
     } catch (e) { console.error('Error checking special achievements:', e); }
 }
