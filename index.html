@@ -24,14 +24,19 @@
 
         /* Role Selection */
         .role-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); }
-        .role-box { background: #111; padding: 40px; border-radius: 16px; border: 1px solid #333; text-align: center; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .role-box { background: #111; padding: 40px; border-radius: 16px; border: 1px solid #333; text-align: center; max-width: 650px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         .role-box h2 { color: #00d4ff; margin-bottom: 10px; }
         .role-box p { color: #666; margin-bottom: 25px; }
-        .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-        .role-btn { padding: 15px 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .role-grid { display: flex; flex-direction: column; gap: 20px; }
+        .region-section { }
+        .region-title { color: #00d4ff; font-weight: bold; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .region-flag { font-size: 20px; }
+        .region-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+        .role-btn { padding: 12px 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; cursor: pointer; font-size: 13px; transition: all 0.2s; text-align: center; }
         .role-btn:hover { border-color: #00d4ff; background: #222; }
         .role-btn.selected { border-color: #00d4ff; background: rgba(0,212,255,0.1); }
-        .role-countries { font-size: 10px; color: #666; margin-top: 5px; }
+        .role-flag { font-size: 16px; margin-right: 4px; }
+        .role-countries { font-size: 9px; color: #666; margin-top: 4px; }
 
         /* Dashboard */
         .dashboard { display: none; padding: 20px; }
@@ -432,6 +437,28 @@ const SUPABASE_URL = 'https://kwftlkfvtglnugxsyjci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZnRsa2Z2dGdsbnVneHN5amNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2NDAxODUsImV4cCI6MjA2MzIxNjE4NX0.9Cn1xahmF8q6pbbWQHNyQSc9fZkVvJaqTzMRZCtmb9E';
 const PASSWORD = 'selly30';
 
+// Slack Webhook (posts to #selly-alerts)
+const SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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';
+
+// Slack IDs mapping
+const SLACK_IDS = {
+    'Rufina': 'U08P8EC476F',
+    'Julia': 'U068PBV3UKG',
+    'Ghada': 'U03LZLCAZ1V',
+    'Cosmin': 'UP5H2CMR9',
+    'Paul': 'UKDKL8B53',
+    'Osama': 'U04P1RFQS4X',
+    'Alexandra': 'U02AWF67VE0',
+    'Ahmed': 'U06FS83GDAM',
+    'Khalid': 'U09HT2B3DHT',
+    'MoayadNQ': 'U04KRPSUR4Z',
+    'Abdulrahman': 'U04QA3E69K5',
+    'Lina': 'U06R6UK6VD2',
+    'Inass': 'U0923SFUB6F',
+    'Eman': 'U03TA23N4KB',
+    'Roshanka': 'U07B8FY5DUN'
+};
+
 // GCC Countries
 const GCC = ['UAE', 'Bahrain', 'BAHRAIN', 'Qatar', 'QATAR', 'KSA', 'Saudi Arabia', 'Oman', 'Kuwait'];
 
@@ -453,10 +480,35 @@ const STATUS_OPTIONS = [
     'something strange pls check'
 ];
 
-// Team members for assignment
-const TEAM_MEMBERS = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Ahmed', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka'];
+// Team members for assignment (including assign-only members)
+const TEAM_MEMBERS = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Ahmed', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka', 'Rufina', 'Julia', 'Ghada'];
 
-// Roles and their countries
+// Roles organized by region for UI
+const ROLE_REGIONS = {
+    'UAE': [
+        { name: 'Paul', label: 'UAE', flag: '🇦🇪' },
+        { name: 'Alexandra', label: 'UAE', flag: '🇦🇪' },
+        { name: 'Eman', label: 'UAE', flag: '🇦🇪' },
+        { name: 'Roshanka', label: 'Business events', flag: '🇦🇪' },
+        { name: 'Rufina', label: 'Assign only', flag: '🇦🇪' },
+        { name: 'Julia', label: 'Assign only', flag: '🇦🇪' },
+        { name: 'Ghada', label: 'Assign only', flag: '🇦🇪' }
+    ],
+    'KSA': [
+        { name: 'MoayadNQ', label: 'KSA', flag: '🇸🇦' },
+        { name: 'Abdulrahman', label: 'KSA', flag: '🇸🇦' }
+    ],
+    'GCC & Other': [
+        { name: 'Cosmin', label: 'All Countries', flag: '🌍' },
+        { name: 'Osama', label: 'All GCC', flag: '🌍' },
+        { name: 'Ahmed', label: 'Bahrain, Qatar, Lebanon', flag: '🇧🇭' },
+        { name: 'Khalid', label: 'Qatar', flag: '🇶🇦' },
+        { name: 'Lina', label: 'Oman', flag: '🇴🇲' },
+        { name: 'Inass', label: 'Morocco', flag: '🇲🇦' }
+    ]
+};
+
+// Roles and their countries (for data filtering)
 const ROLES = {
     'Cosmin': { countries: null, label: 'All Countries', statusFilter: null },
     'Paul': { countries: ['UAE'], label: 'UAE', statusFilter: null },
@@ -469,7 +521,11 @@ const ROLES = {
     'Lina': { countries: ['Oman'], label: 'Oman', statusFilter: null },
     'Inass': { countries: ['Morocco'], label: 'Morocco', statusFilter: null },
     'Eman': { countries: ['UAE'], label: 'UAE', statusFilter: null },
-    'Roshanka': { countries: ['UAE'], label: 'UAE (Business events only)', statusFilter: 'Business events' }
+    'Roshanka': { countries: ['UAE'], label: 'UAE (Business events only)', statusFilter: 'Business events' },
+    // Assign-only users (no default leads, only see assigned to them)
+    'Rufina': { countries: [], label: 'UAE (Assign only)', statusFilter: null, assignOnly: true },
+    'Julia': { countries: [], label: 'UAE (Assign only)', statusFilter: null, assignOnly: true },
+    'Ghada': { countries: [], label: 'UAE (Assign only)', statusFilter: null, assignOnly: true }
 };
 
 let allData = [], filteredData = [], junkData = [];
@@ -524,12 +580,28 @@ function showRoleSelection() {
 
 function renderRoleGrid() {
     const grid = document.getElementById('role-grid');
-    grid.innerHTML = Object.entries(ROLES).map(([name, info]) => `
-        <div class="role-btn" data-role="${name}" onclick="selectRole('${name}')">
-            ${name}
-            <div class="role-countries">${info.label}</div>
-        </div>
-    `).join('');
+    let html = '';
+
+    Object.entries(ROLE_REGIONS).forEach(([region, members]) => {
+        const regionFlag = region === 'UAE' ? '🇦🇪' : region === 'KSA' ? '🇸🇦' : '🌍';
+        html += `
+            <div class="region-section">
+                <div class="region-title">
+                    <span class="region-flag">${regionFlag}</span> ${region}
+                </div>
+                <div class="region-roles">
+                    ${members.map(m => `
+                        <div class="role-btn" data-role="${m.name}" onclick="selectRole('${m.name}')">
+                            <span class="role-flag">${m.flag}</span> ${m.name}
+                            <div class="role-countries">${m.label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    grid.innerHTML = html;
 }
 
 function selectRole(role) {
@@ -629,23 +701,28 @@ async function fetchData() {
         let data = allResults;
         const roleInfo = ROLES[currentRole];
 
-        // Filter by role countries
-        if (roleInfo.countries) {
-            data = data.filter(e => roleInfo.countries.includes(e.country));
-        }
-
-        // Filter by status for Roshanka (only Business events)
-        if (roleInfo.statusFilter) {
-            data = data.filter(e => e.status === roleInfo.statusFilter);
-        }
-
-        // Also show events assigned to current user
-        const assignedToMe = allResults.filter(e => e.responsible && e.responsible.includes(currentRole));
-        assignedToMe.forEach(e => {
-            if (!data.find(d => d.id === e.id)) {
-                data.push(e);
+        // For assign-only users, show only events assigned to them
+        if (roleInfo.assignOnly) {
+            data = allResults.filter(e => e.responsible && e.responsible.includes(currentRole));
+        } else {
+            // Filter by role countries
+            if (roleInfo.countries) {
+                data = data.filter(e => roleInfo.countries.includes(e.country));
             }
-        });
+
+            // Filter by status for Roshanka (only Business events)
+            if (roleInfo.statusFilter) {
+                data = data.filter(e => e.status === roleInfo.statusFilter);
+            }
+
+            // Also show events assigned to current user
+            const assignedToMe = allResults.filter(e => e.responsible && e.responsible.includes(currentRole));
+            assignedToMe.forEach(e => {
+                if (!data.find(d => d.id === e.id)) {
+                    data.push(e);
+                }
+            });
+        }
 
         allData = data;
         statusEl.className = 'status success';
@@ -965,6 +1042,31 @@ async function updateStatus(id, newStatus) {
     }
 }
 
+// Send Slack notification when lead is assigned (via webhook)
+async function sendSlackNotification(assignee, eventTitle, eventUrl, assignedBy) {
+    const slackId = SLACK_IDS[assignee];
+    if (!slackId) {
+        console.log('No Slack ID for:', assignee);
+        return;
+    }
+
+    try {
+        const message = {
+            text: `🔔 *New Lead Assignment*\n<@${slackId}> you've been assigned a new lead by *${assignedBy}*:\n📌 *${eventTitle}*${eventUrl ? `\n<${eventUrl}|View Event>` : ''}`
+        };
+
+        await fetch(SLACK_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(message)
+        });
+
+        console.log('Slack notification sent to', assignee);
+    } catch (e) {
+        console.error('Failed to send Slack notification:', e);
+    }
+}
+
 // Update assignment
 async function updateAssign(id, newAssign) {
     document.querySelectorAll('.dropdown-menu.active').forEach(d => d.classList.remove('active'));
@@ -1002,6 +1104,11 @@ async function updateAssign(id, newAssign) {
 
         // Log activity for achievements
         if (newAssign) logActivity('assign', id);
+
+        // Send Slack notification if assigned to someone new
+        if (newAssign && newAssign !== oldAssign) {
+            sendSlackNotification(newAssign, event?.title || 'Event', event?.url, currentRole);
+        }
 
         document.getElementById('status').innerHTML = `✅ Assigned to ${newAssign || 'nobody'}`;
     } catch (error) {
