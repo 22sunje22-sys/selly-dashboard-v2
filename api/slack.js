@@ -26,7 +26,7 @@ export default async function handler(req, res) {
           }
 
           // Slack webhook URL
-        const SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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';
+        const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL; 
           const response = await fetch(SLACK_WEBHOOK_URL, {
                         method: 'POST',
                         headers: {
