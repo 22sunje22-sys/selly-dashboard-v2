@@ -1048,7 +1048,7 @@ async function sendSlackNotification(assignee, eventTitle, eventUrl, assignedBy)
     }
 
     try {
-        const text = `🔔 *New Lead Assignment*\n<@${slackId}> you've been assigned a new lead by *${assignedBy}*:\n📌 *${eventTitle}*${eventUrl ? `\n<${eventUrl}|View Event>` : ''}`;
+        const text = `🔔 *New Lead Assignment*\n<@${slackId}> you've been assigned a new lead by *${assignedBy}*:\n📌 *${eventTitle}*${eventUrl ? `\n<${eventUrl}|View Event>` : ''}\n\n<https://selly-dashboard-v2.vercel.app/|👉 Check here>`;
 
         // Use our API proxy to bypass CORS
         const response = await fetch('/api/slack', {
