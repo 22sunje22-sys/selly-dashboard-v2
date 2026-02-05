@@ -437,10 +437,7 @@ const SUPABASE_URL = 'https://kwftlkfvtglnugxsyjci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZnRsa2Z2dGdsbnVneHN5amNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2NDAxODUsImV4cCI6MjA2MzIxNjE4NX0.9Cn1xahmF8q6pbbWQHNyQSc9fZkVvJaqTzMRZCtmb9E';
 const PASSWORD = 'selly30';
 
-// Slack Webhook (posts to #selly-alerts)
-const SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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';
-
-// Slack IDs mapping
+// Slack IDs mapping (notifications sent via /api/slack proxy)
 const SLACK_IDS = {
     'Rufina': 'U08P8EC476F',
     'Julia': 'U068PBV3UKG',
@@ -1051,17 +1048,20 @@ async function sendSlackNotification(assignee, eventTitle, eventUrl, assignedBy)
     }
 
     try {
-        const message = {
-            text: `🔔 *New Lead Assignment*\n<@${slackId}> you've been assigned a new lead by *${assignedBy}*:\n📌 *${eventTitle}*${eventUrl ? `\n<${eventUrl}|View Event>` : ''}`
-        };
+        const text = `🔔 *New Lead Assignment*\n<@${slackId}> you've been assigned a new lead by *${assignedBy}*:\n📌 *${eventTitle}*${eventUrl ? `\n<${eventUrl}|View Event>` : ''}`;
 
-        await fetch(SLACK_WEBHOOK_URL, {
+        // Use our API proxy to bypass CORS
+        const response = await fetch('/api/slack', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(message)
+            body: JSON.stringify({ text })
         });
 
-        console.log('Slack notification sent to', assignee);
+        if (response.ok) {
+            console.log('Slack notification sent to', assignee);
+        } else {
+            console.error('Slack API returned error:', await response.text());
+        }
     } catch (e) {
         console.error('Failed to send Slack notification:', e);
     }
