@@ -915,7 +915,7 @@ function renderTable() {
         const transferredFrom = e.transferred_from;
 
         return `<tr>
-            <td>${e.url ? `<a href="${e.url}" target="_blank">${escapeHtml(e.title)}</a>` : escapeHtml(e.title) || '—'}</td>
+            <td>${e.title ? (e.url ? `<a href="${e.url}" target="_blank">${escapeHtml(e.title)}</a>` : escapeHtml(e.title)) : (e.url ? `<a href="${e.url}" target="_blank" style="color:#888;font-size:11px;">🔗 ${e.url}</a>` : '—')}</td>
             <td>${escapeHtml(e.city) || '—'}</td>
             <td>${escapeHtml(e.category) || '—'}</td>
             <td>
@@ -1199,7 +1199,7 @@ function renderJunkTable() {
             <tbody>
                 ${junkData.map(j => `
                     <tr>
-                        <td>${j.url ? `<a href="${j.url}" target="_blank">${escapeHtml(j.title)}</a>` : escapeHtml(j.title) || '—'}</td>
+                        <td>${j.title ? (j.url ? `<a href="${j.url}" target="_blank">${escapeHtml(j.title)}</a>` : escapeHtml(j.title)) : (j.url ? `<a href="${j.url}" target="_blank" style="color:#888;font-size:11px;">🔗 ${j.url}</a>` : '—')}</td>
                         <td>${escapeHtml(j.country) || '—'}</td>
                         <td>${escapeHtml(j.city) || '—'}</td>
                         <td>${escapeHtml(j.status) || '—'}</td>
