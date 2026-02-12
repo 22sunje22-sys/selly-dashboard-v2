@@ -183,14 +183,6 @@
         .bulk-actions button:hover { background: #00b8e6; }
         .bulk-actions .btn-cancel { background: #333; color: #fff; }
 
-        /* Comment suggestions */
-        .comment-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 0 0 8px 8px; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
-        .comment-suggestions.active { display: block; }
-        .suggestion-item { padding: 8px 12px; cursor: pointer; font-size: 12px; color: #ccc; border-bottom: 1px solid #222; }
-        .suggestion-item:hover { background: #222; color: #00d4ff; }
-        .suggestion-item:last-child { border-bottom: none; }
-        .modal-input-wrap { position: relative; }
-
         /* Country Groups */
         .country-group { margin-bottom: 30px; }
         .country-header { background: linear-gradient(135deg, #1a1a1a 0%, #111 100%); padding: 15px 20px; border-radius: 12px 12px 0 0; border: 1px solid #333; border-bottom: none; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
@@ -446,10 +438,7 @@
     <div class="modal">
         <h3>💬 Comment</h3>
         <p class="modal-event-title" id="modal-event-title"></p>
-        <div class="modal-input-wrap">
-            <textarea id="comment-input" placeholder="Enter comment..." oninput="showCommentSuggestions(this.value)" onfocus="showCommentSuggestions(this.value)"></textarea>
-            <div id="comment-suggestions" class="comment-suggestions"></div>
-        </div>
+        <textarea id="comment-input" placeholder="Enter comment..."></textarea>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeModal()">Cancel</button>
             <button class="btn-save" id="btn-save" onclick="saveComment()">Save</button>
@@ -1358,7 +1347,6 @@ async function saveComment() {
 // ========== BULK SELECTION & COMMENT SUGGESTIONS ==========
 let selectedIds = new Set();
 let isBulkMode = false;
-let uniqueComments = [];
 
 function toggleSelectAll(checkbox, country) {
     const rows = document.querySelectorAll(`tr[data-id] input.row-checkbox`);
@@ -1462,61 +1450,10 @@ saveComment = async function() {
     }
 };
 
-// Comment suggestions
-async function loadUniqueComments() {
-    try {
-        const result = await supabaseProxy('selly_clean', {
-            params: 'select=comment&comment=not.is.null&limit=500'
-        });
-        if (!result.error) {
-            const comments = result.map(r => r.comment).filter(c => c && c.trim());
-            uniqueComments = [...new Set(comments)].sort();
-        }
-    } catch (e) {
-        console.log('Could not load comment suggestions');
-    }
-}
-
-function showCommentSuggestions(value) {
-    const suggestionsEl = document.getElementById('comment-suggestions');
-    if (!value || value.length < 2) {
-        suggestionsEl.classList.remove('active');
-        return;
-    }
-
-    const filtered = uniqueComments.filter(c =>
-        c.toLowerCase().includes(value.toLowerCase())
-    ).slice(0, 8);
-
-    if (filtered.length === 0) {
-        suggestionsEl.classList.remove('active');
-        return;
-    }
-
-    suggestionsEl.innerHTML = filtered.map(c =>
-        `<div class="suggestion-item" onclick="selectSuggestion('${escapeAttr(c)}')">${escapeHtml(c)}</div>`
-    ).join('');
-    suggestionsEl.classList.add('active');
-}
-
-function selectSuggestion(comment) {
-    document.getElementById('comment-input').value = comment;
-    document.getElementById('comment-suggestions').classList.remove('active');
-}
-
-// Hide suggestions on outside click
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.modal-input-wrap')) {
-        document.getElementById('comment-suggestions')?.classList.remove('active');
-    }
-});
-
-// Load suggestions when opening single comment modal
-const originalOpenComment = document.body.onclick;
+// Set isBulkMode to false when opening single comment
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('comment-text')) {
         isBulkMode = false;
-        loadUniqueComments();
     }
 });
 
