@@ -174,6 +174,23 @@
         .junk-btn:hover { opacity: 1; background: rgba(255,100,100,0.2); }
         .action-cell { display: flex; align-items: center; gap: 5px; }
 
+        /* Bulk selection */
+        .bulk-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #00d4ff; }
+        .bulk-actions { position: sticky; top: 0; background: linear-gradient(135deg, #1a3a4a 0%, #0d2833 100%); border: 1px solid #00d4ff; border-radius: 8px; padding: 12px 20px; margin-bottom: 15px; display: none; align-items: center; gap: 15px; z-index: 100; }
+        .bulk-actions.active { display: flex; }
+        .bulk-actions span { color: #00d4ff; font-weight: bold; }
+        .bulk-actions button { background: #00d4ff; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .bulk-actions button:hover { background: #00b8e6; }
+        .bulk-actions .btn-cancel { background: #333; color: #fff; }
+
+        /* Comment suggestions */
+        .comment-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 0 0 8px 8px; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
+        .comment-suggestions.active { display: block; }
+        .suggestion-item { padding: 8px 12px; cursor: pointer; font-size: 12px; color: #ccc; border-bottom: 1px solid #222; }
+        .suggestion-item:hover { background: #222; color: #00d4ff; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .modal-input-wrap { position: relative; }
+
         /* Country Groups */
         .country-group { margin-bottom: 30px; }
         .country-header { background: linear-gradient(135deg, #1a1a1a 0%, #111 100%); padding: 15px 20px; border-radius: 12px 12px 0 0; border: 1px solid #333; border-bottom: none; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
@@ -375,6 +392,12 @@
             <button class="btn btn-secondary" onclick="filterLast10DaysNoComments()">🔥 Last 10 days (no comments)</button>
         </div>
 
+        <div id="bulk-actions" class="bulk-actions">
+            <span id="selected-count">0 selected</span>
+            <button onclick="openBulkCommentModal()">💬 Add Comment</button>
+            <button class="btn-cancel" onclick="clearSelection()">✕ Clear</button>
+        </div>
+
         <div id="stats" class="stats"></div>
         <div id="table-container"></div>
     </div>
@@ -423,7 +446,10 @@
     <div class="modal">
         <h3>💬 Comment</h3>
         <p class="modal-event-title" id="modal-event-title"></p>
-        <textarea id="comment-input" placeholder="Enter comment..."></textarea>
+        <div class="modal-input-wrap">
+            <textarea id="comment-input" placeholder="Enter comment..." oninput="showCommentSuggestions(this.value)" onfocus="showCommentSuggestions(this.value)"></textarea>
+            <div id="comment-suggestions" class="comment-suggestions"></div>
+        </div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeModal()">Cancel</button>
             <button class="btn-save" id="btn-save" onclick="saveComment()">Save</button>
@@ -914,7 +940,8 @@ function renderTable() {
         const isAssigned = e.responsible && e.responsible.trim();
         const transferredFrom = e.transferred_from;
 
-        return `<tr>
+        return `<tr data-id="${e.id}">
+            <td><input type="checkbox" class="bulk-checkbox row-checkbox" data-id="${e.id}" onchange="updateBulkSelection()"></td>
             <td>${e.title ? (e.url ? `<a href="${e.url}" target="_blank">${escapeHtml(e.title)}</a>` : escapeHtml(e.title)) : (e.url ? `<a href="${e.url}" target="_blank" style="color:#888;font-size:11px;">🔗 ${e.url}</a>` : '—')}</td>
             <td>${escapeHtml(e.city) || '—'}</td>
             <td>${escapeHtml(e.category) || '—'}</td>
@@ -975,6 +1002,7 @@ function renderTable() {
                 <div class="country-table-wrap">
                     <table>
                         <thead><tr>
+                            <th style="width:30px"><input type="checkbox" class="bulk-checkbox select-all" data-country="${country}" onchange="toggleSelectAll(this, '${country}')"></th>
                             <th>Title</th>
                             <th>City</th>
                             <th>Category</th>
@@ -1326,6 +1354,171 @@ async function saveComment() {
         btn.textContent = 'Save';
     }
 }
+
+// ========== BULK SELECTION & COMMENT SUGGESTIONS ==========
+let selectedIds = new Set();
+let isBulkMode = false;
+let uniqueComments = [];
+
+function toggleSelectAll(checkbox, country) {
+    const rows = document.querySelectorAll(`tr[data-id] input.row-checkbox`);
+    const countryTable = checkbox.closest('table');
+    const checkboxes = countryTable.querySelectorAll('input.row-checkbox');
+
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        if (checkbox.checked) {
+            selectedIds.add(cb.dataset.id);
+        } else {
+            selectedIds.delete(cb.dataset.id);
+        }
+    });
+    updateBulkSelection();
+}
+
+function updateBulkSelection() {
+    selectedIds = new Set();
+    document.querySelectorAll('input.row-checkbox:checked').forEach(cb => {
+        selectedIds.add(cb.dataset.id);
+    });
+
+    const bulkBar = document.getElementById('bulk-actions');
+    const countEl = document.getElementById('selected-count');
+
+    if (selectedIds.size > 0) {
+        bulkBar.classList.add('active');
+        countEl.textContent = `${selectedIds.size} selected`;
+    } else {
+        bulkBar.classList.remove('active');
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('input.bulk-checkbox:checked').forEach(cb => cb.checked = false);
+    selectedIds.clear();
+    document.getElementById('bulk-actions').classList.remove('active');
+}
+
+function openBulkCommentModal() {
+    if (selectedIds.size === 0) return;
+    isBulkMode = true;
+    currentEditId = null;
+    document.getElementById('modal-event-title').textContent = `Adding comment to ${selectedIds.size} events`;
+    document.getElementById('comment-input').value = '';
+    document.getElementById('comment-modal').classList.add('active');
+    loadUniqueComments();
+}
+
+// Override saveComment for bulk mode
+const originalSaveComment = saveComment;
+saveComment = async function() {
+    if (!isBulkMode) {
+        return originalSaveComment();
+    }
+
+    const comment = document.getElementById('comment-input').value;
+    if (!comment.trim()) {
+        alert('Please enter a comment');
+        return;
+    }
+
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true;
+    btn.textContent = `Saving to ${selectedIds.size} events...`;
+
+    try {
+        let saved = 0;
+        for (const id of selectedIds) {
+            await supabaseProxy('selly_clean', {
+                method: 'PATCH',
+                params: `id=eq.${id}`,
+                data: { comment: comment, commented_by: currentRole }
+            });
+
+            const idx = allData.findIndex(e => e.id === id);
+            if (idx !== -1) {
+                allData[idx].comment = comment;
+                allData[idx].commented_by = currentRole;
+            }
+            saved++;
+            btn.textContent = `Saved ${saved}/${selectedIds.size}...`;
+
+            // Log activity for achievements
+            logActivity('comment', id);
+        }
+
+        closeModal();
+        clearSelection();
+        applyFilters();
+        checkSpecialAchievements();
+        document.getElementById('status').innerHTML = `✅ Comment saved to ${saved} events`;
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        isBulkMode = false;
+    }
+};
+
+// Comment suggestions
+async function loadUniqueComments() {
+    try {
+        const result = await supabaseProxy('selly_clean', {
+            params: 'select=comment&comment=not.is.null&limit=500'
+        });
+        if (!result.error) {
+            const comments = result.map(r => r.comment).filter(c => c && c.trim());
+            uniqueComments = [...new Set(comments)].sort();
+        }
+    } catch (e) {
+        console.log('Could not load comment suggestions');
+    }
+}
+
+function showCommentSuggestions(value) {
+    const suggestionsEl = document.getElementById('comment-suggestions');
+    if (!value || value.length < 2) {
+        suggestionsEl.classList.remove('active');
+        return;
+    }
+
+    const filtered = uniqueComments.filter(c =>
+        c.toLowerCase().includes(value.toLowerCase())
+    ).slice(0, 8);
+
+    if (filtered.length === 0) {
+        suggestionsEl.classList.remove('active');
+        return;
+    }
+
+    suggestionsEl.innerHTML = filtered.map(c =>
+        `<div class="suggestion-item" onclick="selectSuggestion('${escapeAttr(c)}')">${escapeHtml(c)}</div>`
+    ).join('');
+    suggestionsEl.classList.add('active');
+}
+
+function selectSuggestion(comment) {
+    document.getElementById('comment-input').value = comment;
+    document.getElementById('comment-suggestions').classList.remove('active');
+}
+
+// Hide suggestions on outside click
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.modal-input-wrap')) {
+        document.getElementById('comment-suggestions')?.classList.remove('active');
+    }
+});
+
+// Load suggestions when opening single comment modal
+const originalOpenComment = document.body.onclick;
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('comment-text')) {
+        isBulkMode = false;
+        loadUniqueComments();
+    }
+});
 
 // ========== ACHIEVEMENTS SYSTEM ==========
 const ACHIEVEMENTS = [
