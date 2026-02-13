@@ -452,15 +452,29 @@
         <div class="supervisor-section">
             <h3 style="color:#ffd700;margin-bottom:20px;">👑 Team Monitor - Supervisor Dashboard</h3>
 
+            <!-- Period Filter -->
+            <div class="supervisor-card" style="padding:15px;">
+                <div style="display:flex;align-items:center;gap:15px;">
+                    <label style="color:#888;font-size:13px;">📅 Period:</label>
+                    <select id="supervisor-period" onchange="renderSupervisorDashboard()" style="padding:8px 12px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#fff;">
+                        <option value="7">Last 7 days</option>
+                        <option value="14" selected>Last 2 weeks</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 3 months</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="fetchSupervisorData().then(() => renderSupervisorDashboard())" style="padding:8px 15px;">🔄 Refresh</button>
+                </div>
+            </div>
+
             <!-- Login Activity -->
             <div class="supervisor-card">
-                <h4>🔐 Login Activity (Last 7 days)</h4>
+                <h4>🔐 Login Activity</h4>
                 <div id="login-activity-table"></div>
             </div>
 
-            <!-- 2-Week Comment Stats -->
+            <!-- Comment Stats -->
             <div class="supervisor-card">
-                <h4>📊 Comments Stats (Last 2 weeks)</h4>
+                <h4>📊 Team Stats</h4>
                 <div id="comment-stats-table"></div>
             </div>
 
@@ -743,9 +757,11 @@ function showDashboard() {
     fetchAchievements();
     fetchActivityStats();
 
-    // If supervisor, fetch supervisor data
+    // If supervisor, fetch supervisor data and switch to supervisor tab
     if (isSupervisor) {
-        fetchSupervisorData();
+        fetchSupervisorData().then(() => {
+            switchTab('supervisor');
+        });
     }
 }
 
@@ -1804,19 +1820,19 @@ async function logUserLogin() {
 async function fetchSupervisorData() {
     if (!isSupervisor) return;
     try {
-        // Fetch login logs (last 7 days)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const periodDays = parseInt(document.getElementById('supervisor-period')?.value || 14);
+        const periodStart = new Date();
+        periodStart.setDate(periodStart.getDate() - periodDays);
 
         // Try user_logins table first
         let logins = await supabaseProxy('user_logins', {
-            params: `select=*&login_time=gte.${sevenDaysAgo.toISOString()}&order=login_time.desc`
+            params: `select=*&login_time=gte.${periodStart.toISOString()}&order=login_time.desc`
         });
 
         // Fallback to activity_log for login events
         if (logins.error) {
             const activityLogins = await supabaseProxy('activity_log', {
-                params: `select=*&action_type=eq.login&created_at=gte.${sevenDaysAgo.toISOString()}&order=created_at.desc`
+                params: `select=*&action_type=eq.login&created_at=gte.${periodStart.toISOString()}&order=created_at.desc`
             });
             if (!activityLogins.error) {
                 // Convert to user_logins format
@@ -1830,10 +1846,8 @@ async function fetchSupervisorData() {
         }
 
         // Fetch all activity for stats
-        const twoWeeksAgo = new Date();
-        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
         const activities = await supabaseProxy('activity_log', {
-            params: `select=*&created_at=gte.${twoWeeksAgo.toISOString()}`
+            params: `select=*&created_at=gte.${periodStart.toISOString()}`
         });
         if (!activities.error) {
             // Process activity stats per user
@@ -1887,6 +1901,8 @@ function renderLoginActivity() {
     const el = document.getElementById('login-activity-table');
     if (!el) return;
 
+    const periodDays = parseInt(document.getElementById('supervisor-period')?.value || 14);
+
     // Get last login per user
     const lastLogins = {};
     loginLogs.forEach(log => {
@@ -1901,41 +1917,39 @@ function renderLoginActivity() {
             <thead><tr>
                 <th>Sales Person</th>
                 <th>Last Login</th>
-                <th>Status</th>
-                <th>Logins (7 days)</th>
+                <th>Days Ago</th>
+                <th>Logins (${periodDays}d)</th>
             </tr></thead>
             <tbody>
                 ${SALES_TEAM.map(member => {
                     const lastLogin = lastLogins[member];
                     const loginCount = loginLogs.filter(l => l.user_name === member).length;
-                    let status = 'offline';
-                    let statusText = 'Never';
-                    let statusClass = 'status-offline';
+                    let daysAgoText = 'Never';
+                    let daysAgoClass = 'status-offline';
 
                     if (lastLogin) {
                         const lastTime = new Date(lastLogin);
-                        const hoursSince = (now - lastTime) / (1000 * 60 * 60);
+                        const daysSince = Math.floor((now - lastTime) / (1000 * 60 * 60 * 24));
 
-                        if (hoursSince < 1) {
-                            status = 'online';
-                            statusText = 'Online now';
-                            statusClass = 'status-online';
-                        } else if (hoursSince < 24) {
-                            status = 'recent';
-                            statusText = 'Today';
-                            statusClass = 'status-recent';
-                        } else if (hoursSince < 48) {
-                            statusText = 'Yesterday';
-                            statusClass = 'status-recent';
+                        if (daysSince === 0) {
+                            daysAgoText = 'Today';
+                            daysAgoClass = 'status-online';
+                        } else if (daysSince === 1) {
+                            daysAgoText = 'Yesterday';
+                            daysAgoClass = 'status-recent';
+                        } else if (daysSince <= 3) {
+                            daysAgoText = daysSince + ' days ago';
+                            daysAgoClass = 'status-recent';
                         } else {
-                            statusText = lastTime.toLocaleDateString('en-GB');
+                            daysAgoText = daysSince + ' days ago';
+                            daysAgoClass = 'status-offline';
                         }
                     }
 
                     return `<tr>
                         <td><strong>${member}</strong></td>
                         <td>${lastLogin ? new Date(lastLogin).toLocaleString('en-GB') : '—'}</td>
-                        <td><span class="${statusClass}">${statusText}</span></td>
+                        <td><span class="${daysAgoClass}">${daysAgoText}</span></td>
                         <td>${loginCount}</td>
                     </tr>`;
                 }).join('')}
@@ -1950,22 +1964,23 @@ function renderCommentStats() {
     const el = document.getElementById('comment-stats-table');
     if (!el) return;
 
+    const periodDays = parseInt(document.getElementById('supervisor-period')?.value || 14);
+    const periodStart = new Date();
+    periodStart.setDate(periodStart.getDate() - periodDays);
+
     // Calculate events with/without comments per user from allData
     const userEvents = {};
     SALES_TEAM.forEach(member => {
-        userEvents[member] = { withComments: 0, withoutComments: 0, total: 0 };
+        userEvents[member] = { withComments: 0, withoutComments: 0, total: 0, assigned: 0 };
     });
 
-    // Filter events from last 2 weeks
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
+    // Count assigned events in period
     allData.forEach(event => {
         const responsible = event.responsible;
         if (responsible && userEvents[responsible]) {
             const eventDate = event.created_at ? new Date(event.created_at) : null;
-            if (eventDate && eventDate >= twoWeeksAgo) {
-                userEvents[responsible].total++;
+            if (eventDate && eventDate >= periodStart) {
+                userEvents[responsible].assigned++;
                 if (event.comment && event.comment.trim()) {
                     userEvents[responsible].withComments++;
                 } else {
@@ -1975,13 +1990,13 @@ function renderCommentStats() {
         }
     });
 
-    // Also count comments made by user (commented_by)
+    // Count comments made by user (commented_by) in period
     const commentsMade = {};
     SALES_TEAM.forEach(member => { commentsMade[member] = 0; });
     allData.forEach(event => {
         if (event.commented_by && commentsMade.hasOwnProperty(event.commented_by)) {
             const eventDate = event.created_at ? new Date(event.created_at) : null;
-            if (eventDate && eventDate >= twoWeeksAgo) {
+            if (eventDate && eventDate >= periodStart) {
                 commentsMade[event.commented_by]++;
             }
         }
@@ -2000,13 +2015,13 @@ function renderCommentStats() {
             <tbody>
                 ${SALES_TEAM.map(member => {
                     const stats = userEvents[member];
-                    const pct = stats.total > 0 ? Math.round(stats.withComments / stats.total * 100) : 0;
+                    const pct = stats.assigned > 0 ? Math.round(stats.withComments / stats.assigned * 100) : 0;
                     const activityComments = supervisorStats[member]?.comments || 0;
 
                     return `<tr>
                         <td><strong>${member}</strong></td>
                         <td style="color:#00d4ff;font-weight:bold;">${activityComments}</td>
-                        <td>${stats.total}</td>
+                        <td>${stats.assigned}</td>
                         <td style="color:#00ff88;">${stats.withComments}</td>
                         <td style="color:#ff6666;">${stats.withoutComments}</td>
                         <td style="width:150px;">
