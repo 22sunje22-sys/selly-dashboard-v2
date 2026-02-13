@@ -733,7 +733,7 @@ function changeRole() {
     showRoleSelection();
 }
 
-function showDashboard() {
+async function showDashboard() {
     currentRole = getCookie('selly_role');
     isSupervisor = getCookie('selly_supervisor') === 'true';
     document.getElementById('login-screen').style.display = 'none';
@@ -752,16 +752,18 @@ function showDashboard() {
     logUserLogin();
 
     refreshSession();
-    fetchData();
+
+    // Fetch main data first and WAIT for it
+    await fetchData();
+
     fetchJunkData();
     fetchAchievements();
     fetchActivityStats();
 
     // If supervisor, fetch supervisor data and switch to supervisor tab
     if (isSupervisor) {
-        fetchSupervisorData().then(() => {
-            switchTab('supervisor');
-        });
+        await fetchSupervisorData();
+        switchTab('supervisor');
     }
 }
 
