@@ -584,7 +584,8 @@ const ROLE_REGIONS = {
         { name: 'Osama', label: 'All GCC', flag: '🌍' },
         { name: 'Khalid', label: 'Qatar', flag: '🇶🇦' },
         { name: 'Lina', label: 'Oman', flag: '🇴🇲' },
-        { name: 'Inass', label: 'Morocco', flag: '🇲🇦' }
+        { name: 'Inass', label: 'Morocco', flag: '🇲🇦' },
+        { name: 'Ahmed', label: 'Supervisor 👑', flag: '👑' }
     ]
 };
 
@@ -636,14 +637,7 @@ function refreshSession() {
 // Auth
 function login() {
     const input = document.getElementById('password-input');
-    if (input.value === SUPERVISOR_PASSWORD) {
-        // Supervisor login - direct to dashboard as Ahmed
-        setCookie('selly_auth', 'true', SESSION_MINUTES);
-        setCookie('selly_role', 'Ahmed', SESSION_MINUTES);
-        setCookie('selly_supervisor', 'true', SESSION_MINUTES);
-        isSupervisor = true;
-        showDashboard();
-    } else if (input.value === PASSWORD) {
+    if (input.value === PASSWORD) {
         setCookie('selly_auth', 'true', SESSION_MINUTES);
         showRoleSelection();
     } else {
@@ -701,6 +695,19 @@ function selectRole(role) {
 
 function confirmRole() {
     if (!currentRole) { alert('Please select a role'); return; }
+
+    // If Ahmed (supervisor) is selected, ask for second password
+    if (currentRole === 'Ahmed') {
+        const supervisorPass = prompt('🔐 Supervisor access required.\nEnter supervisor password:');
+        if (supervisorPass !== SUPERVISOR_PASSWORD) {
+            alert('❌ Invalid supervisor password');
+            return;
+        }
+        // Set supervisor cookie
+        setCookie('selly_supervisor', 'true', SESSION_MINUTES);
+        isSupervisor = true;
+    }
+
     setCookie('selly_role', currentRole, SESSION_MINUTES);
     showDashboard();
 }
