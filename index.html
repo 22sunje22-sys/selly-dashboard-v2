@@ -53,6 +53,29 @@
         .tab-achievements { color: #ffd700; }
         .tab-achievements.active { color: #ffd700; background: rgba(255,215,0,0.1); }
         .achievements-count { background: #ffd700; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; font-weight: bold; }
+        .tab-supervisor { color: #ffd700; }
+        .tab-supervisor.active { color: #ffd700; background: rgba(255,215,0,0.15); }
+
+        /* Supervisor Dashboard */
+        .supervisor-section { padding: 20px 0; }
+        .supervisor-card { background: #111; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .supervisor-card h4 { color: #ffd700; margin-bottom: 15px; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .supervisor-table { width: 100%; border-collapse: collapse; }
+        .supervisor-table th { text-align: left; padding: 10px; color: #ffd700; border-bottom: 1px solid #333; font-size: 12px; background: rgba(255,215,0,0.1); }
+        .supervisor-table td { padding: 10px; border-bottom: 1px solid #222; color: #ccc; font-size: 13px; }
+        .supervisor-table tr:hover { background: rgba(255,215,0,0.05); }
+        .status-online { color: #00ff88; }
+        .status-offline { color: #ff6666; }
+        .status-recent { color: #ffa500; }
+        .bar-container { background: #1a1a1a; border-radius: 4px; height: 20px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.3s; }
+        .bar-commented { background: linear-gradient(90deg, #00d4ff, #0099cc); }
+        .bar-uncommented { background: linear-gradient(90deg, #ff6666, #ff4444); }
+        .performance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .performance-item { background: #1a1a1a; border-radius: 8px; padding: 15px; text-align: center; }
+        .performance-item .name { color: #00d4ff; font-weight: bold; margin-bottom: 5px; }
+        .performance-item .number { font-size: 28px; color: #ffd700; font-weight: bold; }
+        .performance-item .label { font-size: 11px; color: #666; }
 
         /* Achievements */
         .achievements-section { padding: 20px 0; }
@@ -307,6 +330,7 @@
         <button class="tab" onclick="switchTab('week')">📈 Week Stats</button>
         <button class="tab tab-junk" onclick="switchTab('junk')">🗑️ Junk <span class="junk-count" id="junk-count">0</span></button>
         <button class="tab tab-achievements" onclick="switchTab('achievements')">🏆 Achievements <span class="achievements-count" id="achievements-count">0</span></button>
+        <button class="tab tab-supervisor" id="tab-supervisor-btn" onclick="switchTab('supervisor')" style="display:none;">👑 Team Monitor</button>
     </div>
 
     <!-- Data Tab -->
@@ -422,6 +446,37 @@
             <div class="achievements-grid" id="achievements-grid"></div>
         </div>
     </div>
+
+    <!-- Supervisor Tab -->
+    <div id="tab-supervisor" style="display:none;">
+        <div class="supervisor-section">
+            <h3 style="color:#ffd700;margin-bottom:20px;">👑 Team Monitor - Supervisor Dashboard</h3>
+
+            <!-- Login Activity -->
+            <div class="supervisor-card">
+                <h4>🔐 Login Activity (Last 7 days)</h4>
+                <div id="login-activity-table"></div>
+            </div>
+
+            <!-- 2-Week Comment Stats -->
+            <div class="supervisor-card">
+                <h4>📊 Comments Stats (Last 2 weeks)</h4>
+                <div id="comment-stats-table"></div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="supervisor-card">
+                <h4>📈 Team Performance</h4>
+                <div id="performance-chart"></div>
+            </div>
+
+            <!-- Daily Activity -->
+            <div class="supervisor-card">
+                <h4>📅 Daily Activity (Last 7 days)</h4>
+                <div id="daily-activity-chart"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Achievement Toast -->
@@ -450,6 +505,8 @@
 // Config - Supabase credentials are now stored in Vercel Environment Variables
 // and accessed via /api/supabase proxy
 const PASSWORD = 'selly30';
+const SUPERVISOR_PASSWORD = 'ahmedrulezz';
+let isSupervisor = false;
 
 // Helper function to call Supabase via proxy
 async function supabaseProxy(endpoint, { method = 'GET', params = '', data = null } = {}) {
@@ -501,8 +558,11 @@ const STATUS_OPTIONS = [
     'something strange pls check'
 ];
 
-// Team members for assignment (including assign-only members)
-const TEAM_MEMBERS = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Ahmed', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka', 'Rufina', 'Julia', 'Ghada'];
+// Team members for assignment (including assign-only members) - Ahmed removed as he is supervisor
+const TEAM_MEMBERS = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka', 'Rufina', 'Julia', 'Ghada'];
+
+// Sales team members for supervisor monitoring (excludes assign-only users)
+const SALES_TEAM = ['Cosmin', 'Paul', 'Osama', 'Alexandra', 'Khalid', 'MoayadNQ', 'Abdulrahman', 'Lina', 'Inass', 'Eman', 'Roshanka'];
 
 // Roles organized by region for UI
 const ROLE_REGIONS = {
@@ -522,7 +582,6 @@ const ROLE_REGIONS = {
     'GCC & Other': [
         { name: 'Cosmin', label: 'All Countries', flag: '🌍' },
         { name: 'Osama', label: 'All GCC', flag: '🌍' },
-        { name: 'Ahmed', label: 'Bahrain, Qatar, Lebanon', flag: '🇧🇭' },
         { name: 'Khalid', label: 'Qatar', flag: '🇶🇦' },
         { name: 'Lina', label: 'Oman', flag: '🇴🇲' },
         { name: 'Inass', label: 'Morocco', flag: '🇲🇦' }
@@ -535,7 +594,7 @@ const ROLES = {
     'Paul': { countries: ['UAE'], label: 'UAE', statusFilter: null },
     'Osama': { countries: GCC, label: 'All GCC', statusFilter: null },
     'Alexandra': { countries: ['UAE'], label: 'UAE', statusFilter: null },
-    'Ahmed': { countries: ['Bahrain', 'BAHRAIN', 'Qatar', 'QATAR', 'Lebanon'], label: 'Bahrain, Qatar, Lebanon', statusFilter: null },
+    'Ahmed': { countries: null, label: 'Supervisor', statusFilter: null, isSupervisor: true },
     'Khalid': { countries: ['Qatar', 'QATAR'], label: 'Qatar', statusFilter: null },
     'MoayadNQ': { countries: ['KSA', 'Saudi Arabia'], label: 'KSA', statusFilter: null },
     'Abdulrahman': { countries: ['KSA', 'Saudi Arabia'], label: 'KSA', statusFilter: null },
@@ -577,7 +636,14 @@ function refreshSession() {
 // Auth
 function login() {
     const input = document.getElementById('password-input');
-    if (input.value === PASSWORD) {
+    if (input.value === SUPERVISOR_PASSWORD) {
+        // Supervisor login - direct to dashboard as Ahmed
+        setCookie('selly_auth', 'true', SESSION_MINUTES);
+        setCookie('selly_role', 'Ahmed', SESSION_MINUTES);
+        setCookie('selly_supervisor', 'true', SESSION_MINUTES);
+        isSupervisor = true;
+        showDashboard();
+    } else if (input.value === PASSWORD) {
         setCookie('selly_auth', 'true', SESSION_MINUTES);
         showRoleSelection();
     } else {
@@ -589,6 +655,8 @@ function login() {
 function logout() {
     deleteCookie('selly_auth');
     deleteCookie('selly_role');
+    deleteCookie('selly_supervisor');
+    isSupervisor = false;
     location.reload();
 }
 
@@ -646,16 +714,32 @@ function changeRole() {
 
 function showDashboard() {
     currentRole = getCookie('selly_role');
+    isSupervisor = getCookie('selly_supervisor') === 'true';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('role-screen').style.display = 'none';
     document.getElementById('dashboard').classList.add('active');
-    document.getElementById('current-user').textContent = currentRole;
+    document.getElementById('current-user').textContent = currentRole + (isSupervisor ? ' 👑' : '');
     document.getElementById('user-countries').textContent = ROLES[currentRole].label;
+
+    // Show/hide supervisor tab
+    const supervisorTab = document.getElementById('tab-supervisor-btn');
+    if (supervisorTab) {
+        supervisorTab.style.display = isSupervisor ? 'inline-block' : 'none';
+    }
+
+    // Log user login
+    logUserLogin();
+
     refreshSession();
     fetchData();
     fetchJunkData();
     fetchAchievements();
     fetchActivityStats();
+
+    // If supervisor, fetch supervisor data
+    if (isSupervisor) {
+        fetchSupervisorData();
+    }
 }
 
 function showLoginScreen() {
@@ -666,6 +750,7 @@ function showLoginScreen() {
 
 function checkAuth() {
     if (getCookie('selly_auth') === 'true') {
+        isSupervisor = getCookie('selly_supervisor') === 'true';
         if (getCookie('selly_role')) showDashboard();
         else showRoleSelection();
     } else showLoginScreen();
@@ -689,9 +774,11 @@ function switchTab(tab) {
     document.getElementById('tab-week').style.display = tab === 'week' ? 'block' : 'none';
     document.getElementById('tab-junk').style.display = tab === 'junk' ? 'block' : 'none';
     document.getElementById('tab-achievements').style.display = tab === 'achievements' ? 'block' : 'none';
+    document.getElementById('tab-supervisor').style.display = tab === 'supervisor' ? 'block' : 'none';
     if (tab === 'week') renderWeekStats();
     if (tab === 'junk') renderJunkTable();
     if (tab === 'achievements') renderAchievements();
+    if (tab === 'supervisor') renderSupervisorDashboard();
 }
 
 // Data
@@ -1679,6 +1766,327 @@ async function checkSpecialAchievements() {
             await awardAchievement('daily_5');
         }
     } catch (e) { console.error('Error checking special achievements:', e); }
+}
+
+// ========== SUPERVISOR FUNCTIONS ==========
+let loginLogs = [];
+let supervisorStats = {};
+
+// Log user login to Supabase
+async function logUserLogin() {
+    if (!currentRole) return;
+    try {
+        // Try to log to user_logins table
+        const result = await supabaseProxy('user_logins', {
+            method: 'POST',
+            data: { user_name: currentRole }
+        });
+        // If table doesn't exist, also log to activity_log as fallback
+        if (result.error) {
+            await supabaseProxy('activity_log', {
+                method: 'POST',
+                data: { user_name: currentRole, action_type: 'login', event_id: null }
+            });
+        }
+    } catch (e) {
+        console.log('Login logging error:', e);
+    }
+}
+
+// Fetch supervisor data
+async function fetchSupervisorData() {
+    if (!isSupervisor) return;
+    try {
+        // Fetch login logs (last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        // Try user_logins table first
+        let logins = await supabaseProxy('user_logins', {
+            params: `select=*&login_time=gte.${sevenDaysAgo.toISOString()}&order=login_time.desc`
+        });
+
+        // Fallback to activity_log for login events
+        if (logins.error) {
+            const activityLogins = await supabaseProxy('activity_log', {
+                params: `select=*&action_type=eq.login&created_at=gte.${sevenDaysAgo.toISOString()}&order=created_at.desc`
+            });
+            if (!activityLogins.error) {
+                // Convert to user_logins format
+                loginLogs = activityLogins.map(a => ({
+                    user_name: a.user_name,
+                    login_time: a.created_at
+                }));
+            }
+        } else {
+            loginLogs = logins;
+        }
+
+        // Fetch all activity for stats
+        const twoWeeksAgo = new Date();
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+        const activities = await supabaseProxy('activity_log', {
+            params: `select=*&created_at=gte.${twoWeeksAgo.toISOString()}`
+        });
+        if (!activities.error) {
+            // Process activity stats per user
+            supervisorStats = {};
+            SALES_TEAM.forEach(member => {
+                supervisorStats[member] = {
+                    comments: 0,
+                    statusChanges: 0,
+                    assigns: 0,
+                    lastActive: null
+                };
+            });
+
+            activities.forEach(a => {
+                if (supervisorStats[a.user_name]) {
+                    if (a.action_type === 'comment') supervisorStats[a.user_name].comments++;
+                    else if (a.action_type === 'status_change') supervisorStats[a.user_name].statusChanges++;
+                    else if (a.action_type === 'assign') supervisorStats[a.user_name].assigns++;
+
+                    const actTime = new Date(a.created_at);
+                    if (!supervisorStats[a.user_name].lastActive || actTime > supervisorStats[a.user_name].lastActive) {
+                        supervisorStats[a.user_name].lastActive = actTime;
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Error fetching supervisor data:', e);
+    }
+}
+
+// Render supervisor dashboard
+function renderSupervisorDashboard() {
+    if (!isSupervisor) return;
+
+    // Render login activity
+    renderLoginActivity();
+
+    // Render comment stats
+    renderCommentStats();
+
+    // Render performance chart
+    renderPerformanceChart();
+
+    // Render daily activity
+    renderDailyActivity();
+}
+
+// Render login activity table
+function renderLoginActivity() {
+    const el = document.getElementById('login-activity-table');
+    if (!el) return;
+
+    // Get last login per user
+    const lastLogins = {};
+    loginLogs.forEach(log => {
+        if (!lastLogins[log.user_name]) {
+            lastLogins[log.user_name] = log.login_time;
+        }
+    });
+
+    const now = new Date();
+    const html = `
+        <table class="supervisor-table">
+            <thead><tr>
+                <th>Sales Person</th>
+                <th>Last Login</th>
+                <th>Status</th>
+                <th>Logins (7 days)</th>
+            </tr></thead>
+            <tbody>
+                ${SALES_TEAM.map(member => {
+                    const lastLogin = lastLogins[member];
+                    const loginCount = loginLogs.filter(l => l.user_name === member).length;
+                    let status = 'offline';
+                    let statusText = 'Never';
+                    let statusClass = 'status-offline';
+
+                    if (lastLogin) {
+                        const lastTime = new Date(lastLogin);
+                        const hoursSince = (now - lastTime) / (1000 * 60 * 60);
+
+                        if (hoursSince < 1) {
+                            status = 'online';
+                            statusText = 'Online now';
+                            statusClass = 'status-online';
+                        } else if (hoursSince < 24) {
+                            status = 'recent';
+                            statusText = 'Today';
+                            statusClass = 'status-recent';
+                        } else if (hoursSince < 48) {
+                            statusText = 'Yesterday';
+                            statusClass = 'status-recent';
+                        } else {
+                            statusText = lastTime.toLocaleDateString('en-GB');
+                        }
+                    }
+
+                    return `<tr>
+                        <td><strong>${member}</strong></td>
+                        <td>${lastLogin ? new Date(lastLogin).toLocaleString('en-GB') : '—'}</td>
+                        <td><span class="${statusClass}">${statusText}</span></td>
+                        <td>${loginCount}</td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+    el.innerHTML = html;
+}
+
+// Render comment stats
+function renderCommentStats() {
+    const el = document.getElementById('comment-stats-table');
+    if (!el) return;
+
+    // Calculate events with/without comments per user from allData
+    const userEvents = {};
+    SALES_TEAM.forEach(member => {
+        userEvents[member] = { withComments: 0, withoutComments: 0, total: 0 };
+    });
+
+    // Filter events from last 2 weeks
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    allData.forEach(event => {
+        const responsible = event.responsible;
+        if (responsible && userEvents[responsible]) {
+            const eventDate = event.created_at ? new Date(event.created_at) : null;
+            if (eventDate && eventDate >= twoWeeksAgo) {
+                userEvents[responsible].total++;
+                if (event.comment && event.comment.trim()) {
+                    userEvents[responsible].withComments++;
+                } else {
+                    userEvents[responsible].withoutComments++;
+                }
+            }
+        }
+    });
+
+    // Also count comments made by user (commented_by)
+    const commentsMade = {};
+    SALES_TEAM.forEach(member => { commentsMade[member] = 0; });
+    allData.forEach(event => {
+        if (event.commented_by && commentsMade.hasOwnProperty(event.commented_by)) {
+            const eventDate = event.created_at ? new Date(event.created_at) : null;
+            if (eventDate && eventDate >= twoWeeksAgo) {
+                commentsMade[event.commented_by]++;
+            }
+        }
+    });
+
+    const html = `
+        <table class="supervisor-table">
+            <thead><tr>
+                <th>Sales Person</th>
+                <th>Comments Made</th>
+                <th>Assigned Events</th>
+                <th>With Comments</th>
+                <th>Without Comments</th>
+                <th>Progress</th>
+            </tr></thead>
+            <tbody>
+                ${SALES_TEAM.map(member => {
+                    const stats = userEvents[member];
+                    const pct = stats.total > 0 ? Math.round(stats.withComments / stats.total * 100) : 0;
+                    const activityComments = supervisorStats[member]?.comments || 0;
+
+                    return `<tr>
+                        <td><strong>${member}</strong></td>
+                        <td style="color:#00d4ff;font-weight:bold;">${activityComments}</td>
+                        <td>${stats.total}</td>
+                        <td style="color:#00ff88;">${stats.withComments}</td>
+                        <td style="color:#ff6666;">${stats.withoutComments}</td>
+                        <td style="width:150px;">
+                            <div class="bar-container">
+                                <div class="bar-fill bar-commented" style="width:${pct}%"></div>
+                            </div>
+                            <div style="font-size:11px;color:#888;text-align:center;margin-top:2px;">${pct}%</div>
+                        </td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+    el.innerHTML = html;
+}
+
+// Render performance chart
+function renderPerformanceChart() {
+    const el = document.getElementById('performance-chart');
+    if (!el) return;
+
+    // Sort by comments made
+    const sorted = SALES_TEAM.map(member => ({
+        name: member,
+        comments: supervisorStats[member]?.comments || 0
+    })).sort((a, b) => b.comments - a.comments);
+
+    const maxComments = Math.max(...sorted.map(s => s.comments), 1);
+
+    const html = `
+        <div class="performance-grid">
+            ${sorted.map((s, i) => `
+                <div class="performance-item" style="border-left: 3px solid ${i < 3 ? '#ffd700' : '#333'};">
+                    <div class="name">${i < 3 ? '🏆 ' : ''}${s.name}</div>
+                    <div class="number">${s.comments}</div>
+                    <div class="label">comments (2 weeks)</div>
+                    <div class="bar-container" style="margin-top:8px;">
+                        <div class="bar-fill bar-commented" style="width:${(s.comments / maxComments) * 100}%"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    el.innerHTML = html;
+}
+
+// Render daily activity chart
+function renderDailyActivity() {
+    const el = document.getElementById('daily-activity-chart');
+    if (!el) return;
+
+    // Group logins by day
+    const days = {};
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().substring(0, 10);
+        days[key] = { logins: 0, users: new Set() };
+    }
+
+    loginLogs.forEach(log => {
+        const day = log.login_time.substring(0, 10);
+        if (days[day]) {
+            days[day].logins++;
+            days[day].users.add(log.user_name);
+        }
+    });
+
+    const maxLogins = Math.max(...Object.values(days).map(d => d.logins), 1);
+
+    const html = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;height:150px;padding:10px 0;">
+            ${Object.entries(days).map(([date, data]) => {
+                const height = (data.logins / maxLogins) * 100;
+                const dayName = new Date(date).toLocaleDateString('en-GB', { weekday: 'short' });
+                return `
+                    <div style="text-align:center;flex:1;">
+                        <div style="background:linear-gradient(180deg, #00d4ff, #0099cc);width:30px;height:${height}%;margin:0 auto;border-radius:4px 4px 0 0;min-height:5px;"></div>
+                        <div style="font-size:11px;color:#888;margin-top:5px;">${dayName}</div>
+                        <div style="font-size:10px;color:#666;">${data.logins} logins</div>
+                        <div style="font-size:9px;color:#555;">${data.users.size} users</div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+    el.innerHTML = html;
 }
 
 // Init
