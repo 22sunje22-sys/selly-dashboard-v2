@@ -472,9 +472,9 @@
                 <div id="login-activity-table"></div>
             </div>
 
-            <!-- Comment Stats -->
+            <!-- Comment Stats by Country -->
             <div class="supervisor-card">
-                <h4>📊 Team Stats</h4>
+                <h4>🌍 Events by Country</h4>
                 <div id="comment-stats-table"></div>
             </div>
 
@@ -1959,7 +1959,7 @@ function renderLoginActivity() {
     el.innerHTML = html;
 }
 
-// Render comment stats
+// Render comment stats - BY COUNTRY
 function renderCommentStats() {
     const el = document.getElementById('comment-stats-table');
     if (!el) return;
@@ -1968,72 +1968,36 @@ function renderCommentStats() {
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - periodDays);
 
-    // Use same logic as main dashboard filtering
-    // For each team member, count events where they are responsible OR in their countries
-    const userEvents = {};
-    SALES_TEAM.forEach(member => {
-        userEvents[member] = { total: 0, withComments: 0, withoutComments: 0 };
-    });
-
-    // Filter events by date (use event date, not created_at)
+    // Filter events by date
     const periodEvents = allData.filter(event => {
         const eventDate = event.date ? new Date(event.date) : null;
-        if (!eventDate) return true; // Include events without date
+        if (!eventDate) return true;
         return eventDate >= periodStart;
     });
 
-    // For each team member, apply the same filtering logic as in fetchData
-    SALES_TEAM.forEach(member => {
-        const roleInfo = ROLES[member];
-        if (!roleInfo) return;
+    // Define country categories with flag emojis
+    const countryCategories = [
+        { key: 'uae_business', label: '🇦🇪 UAE - Business Events', filter: e => e.country === 'UAE' && e.status === 'Business events' },
+        { key: 'uae_other', label: '🇦🇪 UAE - Other', filter: e => e.country === 'UAE' && e.status !== 'Business events' },
+        { key: 'qatar', label: '🇶🇦 Qatar', filter: e => e.country === 'Qatar' || e.country === 'QATAR' },
+        { key: 'ksa', label: '🇸🇦 KSA', filter: e => e.country === 'KSA' || e.country === 'Saudi Arabia' },
+        { key: 'oman', label: '🇴🇲 Oman', filter: e => e.country === 'Oman' },
+        { key: 'morocco', label: '🇲🇦 Morocco', filter: e => e.country === 'Morocco' },
+        { key: 'other', label: '🌍 Other', filter: e => !['UAE', 'Qatar', 'QATAR', 'KSA', 'Saudi Arabia', 'Oman', 'Morocco'].includes(e.country) }
+    ];
 
-        let memberEvents = [];
-
-        if (roleInfo.assignOnly) {
-            // Assign-only users: only events assigned to them
-            memberEvents = periodEvents.filter(e => e.responsible && e.responsible.includes(member));
-        } else {
-            // Filter by countries
-            if (roleInfo.countries) {
-                memberEvents = periodEvents.filter(e => roleInfo.countries.includes(e.country));
-            } else {
-                // null countries = all countries (like Cosmin)
-                memberEvents = [...periodEvents];
-            }
-
-            // Filter by status (like Roshanka)
-            if (roleInfo.statusFilter) {
-                memberEvents = memberEvents.filter(e => e.status === roleInfo.statusFilter);
-            }
-
-            // Also add events directly assigned to this user
-            const assignedToMember = periodEvents.filter(e => e.responsible && e.responsible.includes(member));
-            assignedToMember.forEach(e => {
-                if (!memberEvents.find(m => m.id === e.id)) {
-                    memberEvents.push(e);
-                }
-            });
-        }
-
-        // Count with/without comments
-        memberEvents.forEach(event => {
-            userEvents[member].total++;
-            if (event.comment && event.comment.trim()) {
-                userEvents[member].withComments++;
-            } else {
-                userEvents[member].withoutComments++;
-            }
-        });
-    });
-
-    // Count comments made by user (commented_by) in period
-    const commentsMade = {};
-    SALES_TEAM.forEach(member => { commentsMade[member] = 0; });
-    periodEvents.forEach(event => {
-        if (event.commented_by && commentsMade.hasOwnProperty(event.commented_by)) {
-            commentsMade[event.commented_by]++;
-        }
-    });
+    // Calculate stats for each country category
+    const countryStats = countryCategories.map(cat => {
+        const events = periodEvents.filter(cat.filter);
+        const withComments = events.filter(e => e.comment && e.comment.trim()).length;
+        const withoutComments = events.length - withComments;
+        return {
+            ...cat,
+            total: events.length,
+            withComments,
+            withoutComments
+        };
+    }).filter(cat => cat.total > 0); // Only show countries with events
 
     // Helper function for color based on percentage
     const getShareColor = (pct) => {
@@ -2042,29 +2006,35 @@ function renderCommentStats() {
         return '#ff6666'; // Bad - red
     };
 
+    // Calculate totals
+    const totals = countryStats.reduce((acc, cat) => {
+        acc.total += cat.total;
+        acc.withComments += cat.withComments;
+        acc.withoutComments += cat.withoutComments;
+        return acc;
+    }, { total: 0, withComments: 0, withoutComments: 0 });
+
+    const totalPct = totals.total > 0 ? Math.round(totals.withComments / totals.total * 100) : 0;
+
     const html = `
         <table class="supervisor-table">
             <thead><tr>
-                <th>Sales Person</th>
-                <th>Comments Made</th>
-                <th>Events Assigned</th>
+                <th>Country / Region</th>
+                <th>Total Events</th>
                 <th>With Comments</th>
                 <th>Without Comments</th>
-                <th>Share with Comments</th>
+                <th>Comment Coverage</th>
             </tr></thead>
             <tbody>
-                ${SALES_TEAM.map(member => {
-                    const stats = userEvents[member];
-                    const pct = stats.total > 0 ? Math.round(stats.withComments / stats.total * 100) : 0;
-                    const activityComments = supervisorStats[member]?.comments || 0;
+                ${countryStats.map(cat => {
+                    const pct = cat.total > 0 ? Math.round(cat.withComments / cat.total * 100) : 0;
                     const shareColor = getShareColor(pct);
 
                     return `<tr>
-                        <td><strong>${member}</strong></td>
-                        <td style="color:#00d4ff;font-weight:bold;">${activityComments}</td>
-                        <td>${stats.total}</td>
-                        <td style="color:#00ff88;">${stats.withComments}</td>
-                        <td style="color:#ff6666;">${stats.withoutComments}</td>
+                        <td><strong>${cat.label}</strong></td>
+                        <td style="color:#00d4ff;font-weight:bold;">${cat.total}</td>
+                        <td style="color:#00ff88;">${cat.withComments}</td>
+                        <td style="color:#ff6666;">${cat.withoutComments}</td>
                         <td style="width:150px;">
                             <div class="bar-container">
                                 <div class="bar-fill" style="width:${pct}%;background:${shareColor};"></div>
@@ -2073,6 +2043,18 @@ function renderCommentStats() {
                         </td>
                     </tr>`;
                 }).join('')}
+                <tr style="background:rgba(255,215,0,0.1);border-top:2px solid #ffd700;">
+                    <td><strong style="color:#ffd700;">📊 TOTAL</strong></td>
+                    <td style="color:#ffd700;font-weight:bold;">${totals.total}</td>
+                    <td style="color:#00ff88;font-weight:bold;">${totals.withComments}</td>
+                    <td style="color:#ff6666;font-weight:bold;">${totals.withoutComments}</td>
+                    <td style="width:150px;">
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width:${totalPct}%;background:${getShareColor(totalPct)};"></div>
+                        </div>
+                        <div style="font-size:12px;color:${getShareColor(totalPct)};text-align:center;margin-top:3px;font-weight:bold;">${totalPct}%</div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     `;
