@@ -955,7 +955,7 @@ function renderTable() {
                     <span class="assign-badge ${isAssigned ? 'assigned' : ''}" onclick="toggleAssignDropdown(event, '${e.id}')" data-id="${e.id}">
                         ${isAssigned ? escapeHtml(e.responsible) : '+ assign'}
                     </span>
-                    ${transferredFrom ? `<span class="transferred-badge">← ${escapeHtml(transferredFrom)}</span>` : ''}
+                    ${transferredFrom ? `<span class="transferred-badge">assigned by ${escapeHtml(transferredFrom)}</span>` : ''}
                     <div class="dropdown-menu" id="assign-dropdown-${e.id}">
                         ${TEAM_MEMBERS.map(m => `<div class="dropdown-item ${e.responsible === m ? 'selected' : ''}" onclick="updateAssign('${e.id}', '${m}')">${m}</div>`).join('')}
                         <div class="dropdown-item" onclick="updateAssign('${e.id}', '')" style="color:#ff6666;">✕ Unassign</div>
@@ -1119,6 +1119,12 @@ async function updateAssign(id, newAssign) {
 
     const event = allData.find(e => e.id === id);
     const oldAssign = event ? event.responsible : null;
+
+    // Check if trying to assign to self when already assigned to self
+    if (newAssign === currentRole && oldAssign === currentRole) {
+        alert('Это уже на вас, не нужно переводить');
+        return;
+    }
 
     try {
         const updateData = {
