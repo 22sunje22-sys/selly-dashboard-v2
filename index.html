@@ -1968,67 +1968,104 @@ function renderCommentStats() {
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - periodDays);
 
-    // Calculate events with/without comments per user from allData
+    // Calculate events per user - count events that belong to their countries
     const userEvents = {};
     SALES_TEAM.forEach(member => {
-        userEvents[member] = { withComments: 0, withoutComments: 0, total: 0, assigned: 0 };
+        userEvents[member] = { total: 0, withComments: 0, withoutComments: 0 };
     });
 
-    // Count assigned events in period
-    allData.forEach(event => {
-        const responsible = event.responsible;
-        if (responsible && userEvents[responsible]) {
-            const eventDate = event.created_at ? new Date(event.created_at) : null;
-            if (eventDate && eventDate >= periodStart) {
-                userEvents[responsible].assigned++;
-                if (event.comment && event.comment.trim()) {
-                    userEvents[responsible].withComments++;
-                } else {
-                    userEvents[responsible].withoutComments++;
+    // Filter events by date first
+    const periodEvents = allData.filter(event => {
+        const eventDate = event.date ? new Date(event.date) : (event.created_at ? new Date(event.created_at) : null);
+        return eventDate && eventDate >= periodStart;
+    });
+
+    // Count events per user based on their countries
+    periodEvents.forEach(event => {
+        SALES_TEAM.forEach(member => {
+            const roleInfo = ROLES[member];
+            if (!roleInfo) return;
+
+            // Skip assign-only users for country-based counting
+            if (roleInfo.assignOnly) return;
+
+            // Check if event belongs to this member
+            let belongsToMember = false;
+
+            // If directly assigned to this member
+            if (event.responsible === member) {
+                belongsToMember = true;
+            }
+            // Or if event is in member's countries (and not assigned to someone else)
+            else if (!event.responsible || event.responsible === '') {
+                if (roleInfo.countries === null) {
+                    // Cosmin sees all - but only unassigned
+                    belongsToMember = true;
+                } else if (roleInfo.countries && roleInfo.countries.includes(event.country)) {
+                    // Check status filter (for Roshanka)
+                    if (roleInfo.statusFilter) {
+                        belongsToMember = event.status === roleInfo.statusFilter;
+                    } else {
+                        belongsToMember = true;
+                    }
                 }
             }
-        }
+
+            if (belongsToMember) {
+                userEvents[member].total++;
+                if (event.comment && event.comment.trim()) {
+                    userEvents[member].withComments++;
+                } else {
+                    userEvents[member].withoutComments++;
+                }
+            }
+        });
     });
 
     // Count comments made by user (commented_by) in period
     const commentsMade = {};
     SALES_TEAM.forEach(member => { commentsMade[member] = 0; });
-    allData.forEach(event => {
+    periodEvents.forEach(event => {
         if (event.commented_by && commentsMade.hasOwnProperty(event.commented_by)) {
-            const eventDate = event.created_at ? new Date(event.created_at) : null;
-            if (eventDate && eventDate >= periodStart) {
-                commentsMade[event.commented_by]++;
-            }
+            commentsMade[event.commented_by]++;
         }
     });
+
+    // Helper function for color based on percentage
+    const getShareColor = (pct) => {
+        if (pct >= 70) return '#00ff88'; // Good - green
+        if (pct >= 40) return '#ffa500'; // Medium - orange
+        return '#ff6666'; // Bad - red
+    };
 
     const html = `
         <table class="supervisor-table">
             <thead><tr>
                 <th>Sales Person</th>
                 <th>Comments Made</th>
-                <th>Assigned Events</th>
+                <th>Events Assigned</th>
                 <th>With Comments</th>
                 <th>Without Comments</th>
-                <th>Progress</th>
+                <th>Share with Comments</th>
             </tr></thead>
             <tbody>
                 ${SALES_TEAM.map(member => {
                     const stats = userEvents[member];
-                    const pct = stats.assigned > 0 ? Math.round(stats.withComments / stats.assigned * 100) : 0;
+                    const pct = stats.total > 0 ? Math.round(stats.withComments / stats.total * 100) : 0;
                     const activityComments = supervisorStats[member]?.comments || 0;
+                    const shareColor = getShareColor(pct);
 
                     return `<tr>
                         <td><strong>${member}</strong></td>
                         <td style="color:#00d4ff;font-weight:bold;">${activityComments}</td>
-                        <td>${stats.assigned}</td>
+                        <td>${stats.total}</td>
                         <td style="color:#00ff88;">${stats.withComments}</td>
                         <td style="color:#ff6666;">${stats.withoutComments}</td>
                         <td style="width:150px;">
                             <div class="bar-container">
-                                <div class="bar-fill bar-commented" style="width:${pct}%"></div>
+                                <div class="bar-fill" style="width:${pct}%;background:${shareColor};"></div>
                             </div>
-                            <div style="font-size:11px;color:#888;text-align:center;margin-top:2px;">${pct}%</div>
+                            <div style="font-size:12px;color:${shareColor};text-align:center;margin-top:3px;font-weight:bold;">${pct}%</div>
                         </td>
                     </tr>`;
                 }).join('')}
