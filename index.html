@@ -1968,56 +1968,60 @@ function renderCommentStats() {
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - periodDays);
 
-    // Calculate events per user - count events that belong to their countries
+    // Use same logic as main dashboard filtering
+    // For each team member, count events where they are responsible OR in their countries
     const userEvents = {};
     SALES_TEAM.forEach(member => {
         userEvents[member] = { total: 0, withComments: 0, withoutComments: 0 };
     });
 
-    // Filter events by date first
+    // Filter events by date (use event date, not created_at)
     const periodEvents = allData.filter(event => {
-        const eventDate = event.date ? new Date(event.date) : (event.created_at ? new Date(event.created_at) : null);
-        return eventDate && eventDate >= periodStart;
+        const eventDate = event.date ? new Date(event.date) : null;
+        if (!eventDate) return true; // Include events without date
+        return eventDate >= periodStart;
     });
 
-    // Count events per user based on their countries
-    periodEvents.forEach(event => {
-        SALES_TEAM.forEach(member => {
-            const roleInfo = ROLES[member];
-            if (!roleInfo) return;
+    // For each team member, apply the same filtering logic as in fetchData
+    SALES_TEAM.forEach(member => {
+        const roleInfo = ROLES[member];
+        if (!roleInfo) return;
 
-            // Skip assign-only users for country-based counting
-            if (roleInfo.assignOnly) return;
+        let memberEvents = [];
 
-            // Check if event belongs to this member
-            let belongsToMember = false;
-
-            // If directly assigned to this member
-            if (event.responsible === member) {
-                belongsToMember = true;
-            }
-            // Or if event is in member's countries (and not assigned to someone else)
-            else if (!event.responsible || event.responsible === '') {
-                if (roleInfo.countries === null) {
-                    // Cosmin sees all - but only unassigned
-                    belongsToMember = true;
-                } else if (roleInfo.countries && roleInfo.countries.includes(event.country)) {
-                    // Check status filter (for Roshanka)
-                    if (roleInfo.statusFilter) {
-                        belongsToMember = event.status === roleInfo.statusFilter;
-                    } else {
-                        belongsToMember = true;
-                    }
-                }
+        if (roleInfo.assignOnly) {
+            // Assign-only users: only events assigned to them
+            memberEvents = periodEvents.filter(e => e.responsible && e.responsible.includes(member));
+        } else {
+            // Filter by countries
+            if (roleInfo.countries) {
+                memberEvents = periodEvents.filter(e => roleInfo.countries.includes(e.country));
+            } else {
+                // null countries = all countries (like Cosmin)
+                memberEvents = [...periodEvents];
             }
 
-            if (belongsToMember) {
-                userEvents[member].total++;
-                if (event.comment && event.comment.trim()) {
-                    userEvents[member].withComments++;
-                } else {
-                    userEvents[member].withoutComments++;
+            // Filter by status (like Roshanka)
+            if (roleInfo.statusFilter) {
+                memberEvents = memberEvents.filter(e => e.status === roleInfo.statusFilter);
+            }
+
+            // Also add events directly assigned to this user
+            const assignedToMember = periodEvents.filter(e => e.responsible && e.responsible.includes(member));
+            assignedToMember.forEach(e => {
+                if (!memberEvents.find(m => m.id === e.id)) {
+                    memberEvents.push(e);
                 }
+            });
+        }
+
+        // Count with/without comments
+        memberEvents.forEach(event => {
+            userEvents[member].total++;
+            if (event.comment && event.comment.trim()) {
+                userEvents[member].withComments++;
+            } else {
+                userEvents[member].withoutComments++;
             }
         });
     });
